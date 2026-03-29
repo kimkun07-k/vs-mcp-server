@@ -60,13 +60,7 @@ def find_vs_instances(prog_id: str = "VisualStudio.DTE.17.0") -> list[dict]:
 def get_vs_pid(dte) -> int | None:
     """DTE 객체로부터 VS 프로세스 PID를 반환한다."""
     try:
-        return int(dte.LocaleID)  # 폴백 — 실제로는 아래 방법 사용
-    except Exception:
-        pass
-    try:
-        # MainWindow.HWnd → GetWindowThreadProcessId 방법
         import win32process
-        import win32gui
         hwnd = dte.MainWindow.HWnd
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         return pid
