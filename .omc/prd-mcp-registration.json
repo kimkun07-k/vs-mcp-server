@@ -1,0 +1,71 @@
+{
+  "project": "VS-MCP-Server — Claude Code 등록 가이드 및 README 업데이트",
+  "description": "MCP 서버 등록 방법 문서화 및 README 전면 개정 (IT-012~017 누락분 포함)",
+  "stories": [
+    {
+      "id": "DOC-001",
+      "title": "Claude Code CLI (.mcp.json) 등록 방법 문서화",
+      "acceptanceCriteria": [
+        "README에 .mcp.json 파일 생성 방법 포함 (경로: 프로젝트 루트 또는 ~/.claude.json) [PASS]",
+        "claude mcp add --scope project/user -- 플래그 사용법 포함 [PASS]",
+        "mcpServers 키 아래 vs 서버 JSON 스니펫 제공 [PASS]",
+        "등록 후 claude mcp list 및 /mcp 명령으로 도구 확인하는 방법 포함 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "DOC-002",
+      "title": "Claude Desktop 등록 방법 문서화",
+      "acceptanceCriteria": [
+        "claude_desktop_config.json 위치 설명 (Windows: %APPDATA%/Claude/claude_desktop_config.json) [PASS]",
+        "전체 JSON 스니펫 제공 [PASS]",
+        "환경변수(VS_DEVENV_PATH) 설정 포함 [PASS]",
+        "재시작 필요 여부 명시 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "DOC-003",
+      "title": "설치 및 사전 요구사항 섹션 개선",
+      "acceptanceCriteria": [
+        "Python 3.11+ 설치 확인 명령어 포함 [PASS]",
+        "pip install -r requirements.txt 명령어 포함 [PASS]",
+        "VS 2022 Community/Professional/Enterprise 지원 명시 [PASS]",
+        "Windows 전용임을 사전 요구사항에 명시 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "DOC-004",
+      "title": "빠른 시작 섹션 추가",
+      "acceptanceCriteria": [
+        "5단계로 '처음부터 Claude Code에서 VS 제어까지' 안내 [PASS]",
+        "각 단계에 실행 가능한 명령어 또는 JSON 스니펫 포함 [PASS]",
+        "README 최상단 아키텍처 앞에 위치 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "DOC-005",
+      "title": "통합 테스트 표 IT-012~017 추가",
+      "acceptanceCriteria": [
+        "기존 IT-001~011 표에 IT-012~017 행 추가 (총 26개 테스트) [PASS]",
+        "각 테스트에 검증 내용 한 줄 설명 포함 [PASS]",
+        "총 테스트 수 26개로 업데이트 [PASS]",
+        "디버깅 세션 테스트 그룹(IT-012~017) 별도 그룹으로 표시 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "DOC-006",
+      "title": "README 전체 품질 검토 및 마무리",
+      "acceptanceCriteria": [
+        "모든 섹션 헤더 일관성 확인 [PASS]",
+        "코드 블록 언어 태그 누락 없음 [PASS]",
+        "사용 예시가 실제 서버 도구명과 일치 [PASS]",
+        "알려진 제약사항에 Python 3.11+ / Windows 전용 명시 [PASS]"
+      ],
+      "passes": true
+    }
+  ]
+}

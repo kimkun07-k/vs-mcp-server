@@ -3,6 +3,45 @@
 Visual Studio 2022를 Claude Code(MCP)에서 제어하는 서버.
 COM/DTE 자동화를 통해 파일 열기, 빌드, 디버거 제어, 브레이크포인트 관리 등을 MCP 도구로 제공한다.
 
+> **Windows 전용.** COM/DTE는 Windows에서만 동작한다.
+
+---
+
+## 빠른 시작
+
+**1. 저장소 클론 및 의존성 설치**
+
+```bash
+git clone <repo-url> vs-mcp-server
+cd vs-mcp-server
+pip install -r requirements.txt
+```
+
+**2. MCP 서버 등록 — Claude Code CLI**
+
+```bash
+claude mcp add --scope project vs -- python C:/path/to/vs-mcp-server/server.py
+```
+
+등록 방법(전역, Desktop, 환경변수 등)은 [설치 및 MCP 서버 등록](#설치-및-mcp-서버-등록) 섹션을 참고한다.
+
+**3. Visual Studio 2022 실행**
+
+VS가 이미 실행 중이면 건너뛴다. 실행하지 않았다면 `vs_launch` 도구로 자동 실행할 수 있다.
+
+**4. Claude Code에서 VS 연결**
+
+```python
+vs_connect(session_id="s1", solution_path="C:/MyProject/MyProject.sln")
+```
+
+**5. 도구 사용 시작**
+
+```python
+vs_file_open(session_id="s1", path="C:/MyProject/src/main.cpp")
+vs_debug_evaluate(session_id="s1", expression="myVar.Value")
+```
+
 ---
 
 ## 아키텍처
@@ -35,20 +74,59 @@ Claude Code (MCP Client)
 
 ## 사전 요구사항
 
-- Windows 10/11
-- Python 3.11+
-- Visual Studio 2022 (Community / Professional / Enterprise)
-- `pywin32`, `mcp` 패키지
+| 항목 | 버전 / 조건 |
+|------|------------|
+| OS | Windows 10 / 11 (COM/DTE는 Windows 전용) |
+| Python | 3.11 이상 |
+| Visual Studio | 2022 Community / Professional / Enterprise |
+| 패키지 | `pywin32`, `mcp` |
 
 ```bash
+# Python 버전 확인
+python --version
+
+# 의존성 설치
 pip install -r requirements.txt
 ```
 
 ---
 
-## MCP 서버 등록
+## 설치 및 MCP 서버 등록
 
-`claude_desktop_config.json` 또는 `.mcp.json`에 추가:
+### Claude Code CLI에 등록
+
+Claude Code CLI는 `.mcp.json` 파일로 MCP 서버를 관리한다.
+
+#### 방법 1 — 프로젝트별 등록 (권장)
+
+작업 중인 프로젝트 루트에 `.mcp.json`을 만든다. Claude Code가 해당 디렉토리에서 실행될 때 자동으로 로드되며, Git에 커밋하면 팀원과 공유된다.
+
+**CLI로 추가:**
+```bash
+claude mcp add --scope project vs -- python C:/path/to/vs-mcp-server/server.py
+```
+
+**또는 `.mcp.json` 직접 작성:**
+```json
+{
+  "mcpServers": {
+    "vs": {
+      "command": "python",
+      "args": ["C:/path/to/vs-mcp-server/server.py"]
+    }
+  }
+}
+```
+
+#### 방법 2 — 전역 등록
+
+모든 프로젝트에서 사용하려면 `claude mcp add` 명령으로 전역 등록한다:
+
+```bash
+claude mcp add --scope user vs -- python C:/path/to/vs-mcp-server/server.py
+```
+
+또는 `~/.claude.json`(`%USERPROFILE%\.claude.json`)에 직접 작성:
 
 ```json
 {
@@ -61,10 +139,95 @@ pip install -r requirements.txt
 }
 ```
 
-VS 설치 경로가 기본값(`Community`)과 다르면 환경변수로 지정:
+#### 방법 3 — `--mcp-config` 플래그로 일회성 실행
 
 ```bash
-VS_DEVENV_PATH=C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe
+claude --mcp-config C:/path/to/vs-mcp-server/mcp-config.json
+```
+
+#### 등록 확인
+
+```bash
+# 등록된 MCP 서버 목록 확인
+claude mcp list
+```
+
+Claude Code 세션 안에서 서버 상태와 도구 목록을 확인하려면:
+
+```
+/mcp
+```
+
+`vs` 서버가 연결됨으로 표시되고, `vs_connect`, `vs_debug_evaluate` 등 22개 도구가 활성화되어야 한다.
+
+---
+
+### Claude Desktop에 등록
+
+`claude_desktop_config.json`을 열어 `mcpServers`에 추가한다.
+
+**파일 위치 (Windows):**
+```
+%APPDATA%\Claude\claude_desktop_config.json
+```
+
+**설정 예시:**
+
+```json
+{
+  "mcpServers": {
+    "vs": {
+      "command": "python",
+      "args": ["C:/path/to/vs-mcp-server/server.py"],
+      "env": {
+        "VS_DEVENV_PATH": "C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/devenv.exe"
+      }
+    }
+  }
+}
+```
+
+> Claude Desktop 재시작 후 반영된다.
+
+---
+
+### 환경변수 설정
+
+| 환경변수 | 기본값 | 설명 |
+|---------|--------|------|
+| `VS_DEVENV_PATH` | Community 설치 경로 | `devenv.exe` 전체 경로. Professional/Enterprise 사용 시 재정의 필요. |
+| `VS_MCP_LOG_DIR` | `<server.py 위치>/logs/` | 크래시 로그 저장 디렉토리 |
+| `VS_MCP_LOG_LEVEL` | `INFO` | 로그 레벨 (`DEBUG` / `INFO` / `WARNING`) |
+
+**VS 설치 경로 예시:**
+
+```bash
+# Community (기본값)
+C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.exe
+
+# Professional
+C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe
+
+# Enterprise
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe
+```
+
+환경변수를 영구 설정하려면:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable(
+    "VS_DEVENV_PATH",
+    "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe",
+    "User"
+)
+```
+
+또는 `.mcp.json`의 `env` 블록으로 서버별 설정:
+
+```json
+"env": {
+  "VS_DEVENV_PATH": "C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/devenv.exe"
+}
 ```
 
 ---
@@ -129,22 +292,40 @@ VS_DEVENV_PATH=C:\Program Files\Microsoft Visual Studio\2022\Professional\Common
 
 ## 사용 예시
 
-```
-# VS 연결
+```python
+# 1. VS 인스턴스 목록 확인
+vs_list_instances()
+# → [{"pid": 12345, "solution": "C:/MyProject/MyProject.sln"}]
+
+# 2. 세션 연결
 vs_connect(session_id="s1", solution_path="C:/MyProject/MyProject.sln")
 
-# 파일 열고 특정 라인으로 이동
+# 3. 파일 열기 + 특정 라인으로 이동
 vs_file_open(session_id="s1", path="C:/MyProject/src/main.cpp")
 vs_file_goto(session_id="s1", path="C:/MyProject/src/main.cpp", line=42)
 
-# 브레이크포인트 추가 후 디버깅 시작
-vs_debug_breakpoint(session_id="s1", action="add", file="src/main.cpp", line=42)
-vs_debug_start(session_id="s1", wait_for_break=True)
+# 4. 유저가 선택한 코드 읽기
+vs_file_selection(session_id="s1")
+# → {"text": "int x = foo();", "start_line": 42, "end_line": 42}
 
-# Break 모드에서 변수 평가
-vs_debug_evaluate(session_id="s1", expression="myVariable.Value")
+# 5. 빌드
+vs_build_solution(session_id="s1", configuration="Debug")
+# → {"success": true, "failed_projects": 0}
+
+# 6. 브레이크포인트 추가 후 디버깅 시작
+vs_debug_breakpoint(session_id="s1", action="add", file="C:/MyProject/src/main.cpp", line=42)
+vs_debug_start(session_id="s1", wait_for_break=False)
+
+# 7. Break 모드 진입 후 변수 검사
 vs_debug_locals(session_id="s1")
+vs_debug_evaluate(session_id="s1", expression="myObj.Value")
 vs_debug_callstack(session_id="s1")
+
+# 8. 스텝 실행
+vs_debug_step(session_id="s1", step_type="over")
+
+# 9. 디버깅 종료
+vs_debug_stop(session_id="s1")
 ```
 
 ---
@@ -165,23 +346,29 @@ VS 2022가 실행 중인 상태에서:
 python -m pytest tests/test_integration_vs.py -v -s
 ```
 
-20개 테스트가 실제 VS 인스턴스에 대해 실행된다. VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
+VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 
-**통합 테스트 항목:**
+**통합 테스트 항목 (IT 그룹 17개, pytest 함수 26개):**
 
-| 그룹 | 테스트 | 검증 내용 |
-|------|--------|----------|
-| IT-001 | ROT 감지 (3개) | VS 인스턴스 감지, PID 검증, `get_vs_pid()` 정확성 |
-| IT-002 | DTE 속성 (3개) | MainWindow, Solution, Version COM 속성 접근 |
-| IT-003 | 파일 열기 (1개) | `vs_file_open` 후 `ActiveDocument` 변경 확인 |
-| IT-004 | 파일 목록/활성 (2개) | `vs_file_list_open`, `vs_file_active` round-trip |
-| IT-005 | 빌드 상태 (1개) | `vs_build_status` 반환값 검증 |
-| IT-006 | 브레이크포인트 (3개) | add/list/remove CRUD 확인 |
-| IT-007 | 디버거 모드 (2개) | Design 모드 확인, `vs_debug_stop` |
-| IT-008 | STAThread 큐 (2개) | 실제 큐 메커니즘 및 이력 기록 확인 |
-| IT-009 | 커서 이동 (1개) | `vs_file_goto` 후 `vs_file_active` round-trip |
-| IT-010 | 하이라이트 (1개) | `vs_file_highlight` 범위 선택 |
-| IT-011 | 선택 텍스트 (1개) | `vs_file_selection` 반환값 |
+| 그룹 | ID | 검증 내용 |
+|------|----|----------|
+| ROT 감지 | IT-001 | VS 인스턴스 감지, PID 검증, `get_vs_pid()` 정확성, 스테일 항목 필터링 |
+| DTE 속성 | IT-002 | `MainWindow`, `Solution`, `Version` COM 속성 접근 |
+| 파일 열기 | IT-003 | `vs_file_open` 후 `ActiveDocument` 변경 확인 |
+| 파일 목록/활성 | IT-004 | `vs_file_list_open`, `vs_file_active` round-trip |
+| 빌드 상태 | IT-005 | `vs_build_status` 반환값 검증 |
+| 브레이크포인트 | IT-006 | `add` / `list` / `remove` CRUD |
+| 디버거 모드 | IT-007 | Design 모드 확인, `vs_debug_stop` |
+| STAThread 큐 | IT-008 | 실제 큐 메커니즘 및 이력 기록 확인 |
+| 커서 이동 | IT-009 | `vs_file_goto` 후 `vs_file_active` round-trip |
+| 하이라이트 | IT-010 | `vs_file_highlight` 범위 선택 |
+| 선택 텍스트 | IT-011 | `vs_file_selection` 반환값 |
+| **디버깅 세션** | IT-012 | 새 VS 인스턴스에 `DebugTarget.sln` 로드, Debug 빌드, BP 설정 후 Break 모드 진입 확인 |
+| **디버깅 세션** | IT-013 | Break 모드에서 `vs_debug_locals` → `x=42, y=50, msg` 변수 확인 |
+| **디버깅 세션** | IT-014 | `vs_debug_evaluate("x + y") == "92"`, `msg`에 `"hello from debugger"` 포함 |
+| **디버깅 세션** | IT-015 | `vs_debug_callstack` → `depth >= 1`, .NET 8 `CurrentStackFrame` 폴백 동작 |
+| **디버깅 세션** | IT-016 | `vs_debug_step("over")` 후 `mode == "break"`, `line > BP_LINE`, `ActiveDocument` 폴백 동작 |
+| **디버깅 세션** | IT-017 | `vs_debug_stop()` → `status == "stopped"`, `mode == "design"` |
 
 ---
 
@@ -194,7 +381,7 @@ python -m pytest tests/test_integration_vs.py -v -s
 | `timeouts["build"]` | 600초 | 빌드 최대 대기 시간 |
 | `timeouts["launch"]` | 120초 | VS 실행 후 ROT 등록 대기 |
 | `timeouts["debug_evaluate"]` | 10초 | 표현식 평가 타임아웃 |
-| `VS_DEVENV_PATH` | Community 경로 | devenv.exe 경로 (환경변수로 재정의 가능) |
+| `VS_DEVENV_PATH` | Community 경로 | `devenv.exe` 경로 (환경변수로 재정의 가능) |
 | `QUEUE_HISTORY_MAX` | 100 | 명령 이력 최대 보존 건수 |
 
 ---
@@ -203,5 +390,7 @@ python -m pytest tests/test_integration_vs.py -v -s
 
 - **Windows 전용**: COM/DTE는 Windows에서만 동작한다.
 - **VS 2022 전용**: `VisualStudio.DTE.17.0` 모니커만 지원한다.
+- **Python 3.11+**: 하위 버전에서는 동작을 보장하지 않는다.
 - **STAThread cross-apartment**: `STAThread` 내에서 DTE를 사용할 때는 ROT에서 직접 DTE를 재획득해야 한다. 메인 스레드의 DTE 포인터를 STAThread에 전달하면 `RPC_E_WRONG_THREAD` 발생.
 - **Break 모드 전용 기능**: `vs_debug_step`, `vs_debug_locals`, `vs_debug_evaluate`, `vs_debug_callstack`은 디버거가 Break 모드일 때만 동작한다.
+- **.NET 8 관리 코드 제한**: `CurrentThread.StackFrames` COM 열거가 빈 컬렉션을 반환하는 경우가 있음. `vs_debug_callstack`은 `CurrentStackFrame` 폴백으로 처리하고, `vs_debug_step`은 `ActiveDocument.Selection` 폴백으로 처리한다.
