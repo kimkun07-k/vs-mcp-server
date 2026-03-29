@@ -18,10 +18,6 @@ def _get_sta(session_id: str):
     return sm.get_manager().require_sta(session_id)
 
 
-# ------------------------------------------------------------------ #
-# Claude → 유저 방향 (보여주기)                                        #
-# ------------------------------------------------------------------ #
-
 async def vs_file_open(
     *,
     session_id: str,
@@ -193,10 +189,6 @@ async def vs_file_list_open(*, session_id: str) -> dict:
     )
 
 
-# ------------------------------------------------------------------ #
-# 유저 → Claude 방향 (읽어오기)                                       #
-# ------------------------------------------------------------------ #
-
 async def vs_file_active(*, session_id: str) -> dict:
     """유저가 현재 포커스하고 있는 파일 정보를 반환한다.
 
@@ -268,10 +260,6 @@ async def vs_file_selection(*, session_id: str) -> dict:
         loop=asyncio.get_running_loop(),
     )
 
-
-# ------------------------------------------------------------------ #
-# 내부 유틸                                                           #
-# ------------------------------------------------------------------ #
 
 def _find_open_document(dte, path: str):
     """열려 있는 Document 중 path와 일치하는 것을 반환한다."""

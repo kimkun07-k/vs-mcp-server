@@ -14,7 +14,6 @@ import com_bridge
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class Session:
     session_id: str
@@ -27,17 +26,12 @@ class Session:
             return None
         return com_bridge.get_sta(self.instance_pid)
 
-
 class SessionManager:
     """클라이언트 세션 ↔ VS 인스턴스 매핑을 관리한다."""
 
     def __init__(self) -> None:
         self._sessions: dict[str, Session] = {}
         self._lock = threading.Lock()
-
-    # ------------------------------------------------------------------ #
-    # CRUD                                                                 #
-    # ------------------------------------------------------------------ #
 
     def create_session(self, session_id: str) -> Session:
         """새 세션을 생성하고 반환한다. 이미 존재하면 기존 세션을 반환한다."""
@@ -84,10 +78,6 @@ class SessionManager:
             with self._lock:
                 session.instance_pid = None
 
-    # ------------------------------------------------------------------ #
-    # 조회                                                                 #
-    # ------------------------------------------------------------------ #
-
     def list_sessions(self) -> list[dict]:
         with self._lock:
             return [
@@ -116,11 +106,9 @@ class SessionManager:
             )
         return sta
 
-
 # 전역 싱글턴
 _manager: Optional[SessionManager] = None
 _manager_lock = threading.Lock()
-
 
 def get_manager() -> SessionManager:
     global _manager

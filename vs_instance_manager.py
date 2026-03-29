@@ -20,11 +20,6 @@ from utils.rot import find_vs_instances, get_vs_pid
 
 logger = logging.getLogger(__name__)
 
-
-# ------------------------------------------------------------------ #
-# 인스턴스 목록 조회                                                   #
-# ------------------------------------------------------------------ #
-
 def list_instances() -> list[dict]:
     """ROT에서 실행 중인 VS 2022 인스턴스 목록을 반환한다.
 
@@ -53,10 +48,7 @@ def list_instances() -> list[dict]:
     finally:
         pythoncom.CoUninitialize()
 
-
-# ------------------------------------------------------------------ #
 # DTE 획득                                                            #
-# ------------------------------------------------------------------ #
 
 def get_dte_by_pid(pid: int):
     """ROT에서 PID로 DTE 객체를 반환한다. 없으면 None."""
@@ -67,7 +59,6 @@ def get_dte_by_pid(pid: int):
         if get_vs_pid(dte) == pid:
             return dte
     return None
-
 
 def get_dte_by_solution(solution_path: str):
     """ROT에서 솔루션 경로로 DTE 객체를 반환한다. 없으면 None."""
@@ -83,10 +74,7 @@ def get_dte_by_solution(solution_path: str):
             return dte
     return None
 
-
-# ------------------------------------------------------------------ #
 # VS 실행                                                             #
-# ------------------------------------------------------------------ #
 
 def launch_vs(solution_path: Optional[str] = None, timeout: Optional[float] = None) -> dict:
     """devenv.exe를 실행하고 ROT 폴링으로 DTE를 획득한다.
@@ -155,12 +143,10 @@ def launch_vs(solution_path: Optional[str] = None, timeout: Optional[float] = No
     finally:
         pythoncom.CoUninitialize()
 
-
 def _try_lose_focus(pid: int) -> None:
     """VS 창을 잠깐 다른 창으로 포커스 이동시켜 ROT 등록을 유발한다."""
     try:
         import win32gui
-        import win32con
         import win32process
 
         def _cb(hwnd, results):

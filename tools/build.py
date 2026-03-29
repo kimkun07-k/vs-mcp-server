@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import threading
-import time
 from typing import Optional
 
 import config
@@ -20,10 +18,6 @@ logger = logging.getLogger(__name__)
 def _get_sta(session_id: str):
     return sm.get_manager().require_sta(session_id)
 
-
-# ------------------------------------------------------------------ #
-# 빌드                                                                #
-# ------------------------------------------------------------------ #
 
 async def vs_build_solution(
     *,
@@ -256,10 +250,8 @@ async def vs_error_list(
 
     def _error_list():
         dte = sta.dte
-        # EnvDTE80.DTE2.ToolWindows.ErrorList
         try:
-            dte2 = dte  # win32com Dispatch로 받으면 DTE2 메서드도 접근 가능
-            error_list = dte2.ToolWindows.ErrorList
+            error_list = dte.ToolWindows.ErrorList
         except Exception as e:
             logger.warning("ErrorList 접근 실패: %s", e)
             return {"errors": [], "warnings": [], "messages": [], "error_count": 0}

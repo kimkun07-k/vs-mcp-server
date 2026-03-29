@@ -21,18 +21,13 @@ DBG_MODE_DESIGN = 1   # dbgDesignMode
 DBG_MODE_BREAK = 2    # dbgBreakMode
 DBG_MODE_RUN = 3      # dbgRunMode
 
-
 def _get_sta(session_id: str):
     return sm.get_manager().require_sta(session_id)
-
 
 def _mode_name(mode_int: int) -> str:
     return {DBG_MODE_DESIGN: "design", DBG_MODE_BREAK: "break", DBG_MODE_RUN: "run"}.get(mode_int, "unknown")
 
-
-# ------------------------------------------------------------------ #
 # 시작 / 종료                                                         #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_start(
     *,
@@ -65,7 +60,6 @@ async def vs_debug_start(
         loop=asyncio.get_running_loop(),
     )
 
-
 async def vs_debug_stop(*, session_id: str) -> dict:
     """디버깅 세션을 종료하고 Design 모드로 복귀한다.
 
@@ -87,11 +81,6 @@ async def vs_debug_stop(*, session_id: str) -> dict:
         session_id=session_id,
         loop=asyncio.get_running_loop(),
     )
-
-
-# ------------------------------------------------------------------ #
-# 브레이크포인트                                                      #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_breakpoint(
     *,
@@ -166,10 +155,7 @@ async def vs_debug_breakpoint(
         loop=asyncio.get_running_loop(),
     )
 
-
-# ------------------------------------------------------------------ #
 # 스텝 실행                                                           #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_step(
     *,
@@ -218,10 +204,7 @@ async def vs_debug_step(
         loop=asyncio.get_running_loop(),
     )
 
-
-# ------------------------------------------------------------------ #
 # 로컬 변수                                                           #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_locals(*, session_id: str) -> dict:
     """Break 모드에서 현재 스택 프레임의 로컬 변수를 반환한다.
@@ -260,10 +243,7 @@ async def vs_debug_locals(*, session_id: str) -> dict:
         loop=asyncio.get_running_loop(),
     )
 
-
-# ------------------------------------------------------------------ #
 # 표현식 평가                                                         #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_evaluate(
     *,
@@ -337,10 +317,7 @@ async def vs_debug_evaluate(
         loop=asyncio.get_running_loop(),
     )
 
-
-# ------------------------------------------------------------------ #
 # 콜스택                                                              #
-# ------------------------------------------------------------------ #
 
 async def vs_debug_callstack(*, session_id: str) -> dict:
     """현재 스레드의 콜스택을 반환한다.
