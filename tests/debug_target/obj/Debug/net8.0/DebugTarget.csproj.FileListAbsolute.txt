@@ -1,0 +1,14 @@
+C:\Dallokan\vs-mcp-server\tests\debug_target\bin\Debug\net8.0\DebugTarget.exe
+C:\Dallokan\vs-mcp-server\tests\debug_target\bin\Debug\net8.0\DebugTarget.deps.json
+C:\Dallokan\vs-mcp-server\tests\debug_target\bin\Debug\net8.0\DebugTarget.runtimeconfig.json
+C:\Dallokan\vs-mcp-server\tests\debug_target\bin\Debug\net8.0\DebugTarget.dll
+C:\Dallokan\vs-mcp-server\tests\debug_target\bin\Debug\net8.0\DebugTarget.pdb
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.GeneratedMSBuildEditorConfig.editorconfig
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.AssemblyInfoInputs.cache
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.AssemblyInfo.cs
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.csproj.CoreCompileInputs.cache
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.dll
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\refint\DebugTarget.dll
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.pdb
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\DebugTarget.genruntimeconfig.cache
+C:\Dallokan\vs-mcp-server\tests\debug_target\obj\Debug\net8.0\ref\DebugTarget.dll

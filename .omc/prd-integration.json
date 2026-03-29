@@ -8,7 +8,7 @@
       "acceptanceCriteria": [
         "ROT에서 VS 인스턴스를 찾아 PID와 모니커 반환 [PASS: pid=18872]",
         "모니커에서 추출한 PID가 tasklist devenv.exe와 일치 [PASS]",
-        "get_vs_pid() 버그 수정 — win32process로 올바른 PID 반환 [PASS: pid=18872, LocaleID 버그 제거]",
+        "get_vs_pid() 버그 수정 — win32process로 올바른 PID 반환 [PASS]",
         "스테일 ROT 항목 필터링 (_is_process_alive) [PASS]"
       ],
       "passes": true
@@ -17,8 +17,8 @@
       "id": "IT-002",
       "title": "DTE 기본 속성 접근",
       "acceptanceCriteria": [
-        "dte.MainWindow.Caption 접근 가능 [PASS: 'Dallokan - config.py - Microsoft Visual Studio']",
-        "dte.Solution.FullName 반환 [PASS: Dallokan.sln]",
+        "dte.MainWindow.Caption 접근 가능 [PASS]",
+        "dte.Solution.FullName 반환 [PASS]",
         "dte.Version이 '17.' 로 시작 [PASS: '17.0']"
       ],
       "passes": true
@@ -36,7 +36,7 @@
       "id": "IT-004",
       "title": "열린 파일 목록 및 활성 파일",
       "acceptanceCriteria": [
-        "vs_file_list_open 결과에 config.py 포함 [PASS: 11개 파일]",
+        "vs_file_list_open 결과에 config.py 포함 [PASS]",
         "vs_file_active path/line/column 반환 [PASS]"
       ],
       "passes": true
@@ -54,8 +54,8 @@
       "id": "IT-006",
       "title": "브레이크포인트 CRUD (vs_debug_breakpoint)",
       "acceptanceCriteria": [
-        "list 반환 [PASS: 초기 3개]",
-        "add 후 list 확인 [PASS: config.py:5 추가]",
+        "list 반환 [PASS]",
+        "add 후 list 확인 [PASS]",
         "remove 후 list에서 삭제 확인 [PASS]"
       ],
       "passes": true
@@ -73,9 +73,9 @@
       "id": "IT-008",
       "title": "실제 STAThread 큐 경로 검증",
       "acceptanceCriteria": [
-        "STAThread 내부 STA에서 find_vs_instances()로 DTE 재획득 후 Version 반환 [PASS: '17.0']",
+        "STAThread 내부 STA에서 ROT DTE 재획득 후 Version 반환 [PASS: '17.0']",
         "STAThread 명령 이력(get_history)에 done 상태로 기록 [PASS]",
-        "cross-apartment 문제(RPC_E_WRONG_THREAD) 없이 실행 [PASS: ROT 재획득 패턴으로 해결]"
+        "cross-apartment 문제(RPC_E_WRONG_THREAD) 없이 실행 [PASS]"
       ],
       "passes": true
     },
@@ -103,6 +103,63 @@
       "acceptanceCriteria": [
         "vs_file_selection path/start_line/end_line/text 반환 [PASS]",
         "IT-010 highlight 후 lines 1-2의 텍스트가 포함됨 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-012",
+      "title": "실제 디버거 attach + Break 모드 진입",
+      "acceptanceCriteria": [
+        "새 VS 인스턴스에 DebugTarget.sln 로드 및 Debug 빌드 완료 [PASS]",
+        "Program.cs:5에 브레이크포인트 추가 후 vs_debug_start 호출 [PASS]",
+        "30초 이내 Break 모드(CurrentMode==2) 진입 확인 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-013",
+      "title": "Break 모드에서 로컬 변수 조회 (vs_debug_locals)",
+      "acceptanceCriteria": [
+        "vs_debug_locals가 x, y, msg 변수 반환 [PASS]",
+        "x==42, y==50 값 확인 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-014",
+      "title": "Break 모드에서 표현식 평가 (vs_debug_evaluate)",
+      "acceptanceCriteria": [
+        "evaluate('x + y') == '92' [PASS]",
+        "evaluate('msg')에 'hello from debugger' 포함 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-015",
+      "title": "Break 모드에서 콜스택 조회 (vs_debug_callstack)",
+      "acceptanceCriteria": [
+        "vs_debug_callstack이 최소 1개 프레임 반환 [PASS: depth=1]",
+        ".NET 8에서 StackFrames 순회 실패 시 CurrentStackFrame 폴백 동작 [PASS: 'Program.<Main>$']",
+        "도구가 크래시 없이 유효한 구조 반환 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-016",
+      "title": "Break 모드에서 Step Over (vs_debug_step)",
+      "acceptanceCriteria": [
+        "vs_debug_step('over') 후 mode=='break' [PASS]",
+        "step 후 line이 BP_LINE(5)보다 크거나 같음 [PASS: line=6]",
+        ".NET 8에서 frame.FileName 실패 시 ActiveDocument 폴백 동작 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-017",
+      "title": "Break 모드에서 디버거 중단 (vs_debug_stop)",
+      "acceptanceCriteria": [
+        "vs_debug_stop() status=='stopped' [PASS]",
+        "mode=='design' 복귀 확인 [PASS]"
       ],
       "passes": true
     }

@@ -26,6 +26,9 @@ import config
 import vs_instance_manager as vim
 
 TEST_FILE = str(Path(__file__).parent.parent / "config.py")
+DEBUG_PROGRAM_CS = str(Path(__file__).parent / "debug_target" / "Program.cs")
+DEBUG_SLN = str(Path(__file__).parent / "debug_target" / "DebugTarget.sln")
+BP_LINE = 5  # Console.WriteLine in Program.cs
 
 
 # ---------------------------------------------------------------------------
@@ -495,6 +498,232 @@ def test_file_selection_returns_position(session_ctx):
     assert "text" in result
     print(f"\n  vs_file_selection -> lines {result['start_line']}-{result['end_line']}, "
           f"text='{result['text'][:40].strip()}' [OK]")
+
+
+# ---------------------------------------------------------------------------
+# 실제 디버깅 세션 픽스처 (IT-012~017)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def debug_vs_ctx(com_sta):
+    """DebugTarget.sln으로 새 VS 인스턴스를 실행하고 Debug 빌드까지 완료한다."""
+    from utils.rot import find_vs_instances
+
+    proc = subprocess.Popen([config.VS_DEVENV_PATH, DEBUG_SLN])
+    print(f"\n[debug_vs_ctx] 새 VS 시작 proc.pid={proc.pid}")
+
+    # ROT 등록 대기 (proc.pid 기준으로 새 인스턴스만 탐색)
+    deadline = time.monotonic() + config.timeouts["launch"]
+    new_dte = None
+    new_pid = None
+    while time.monotonic() < deadline:
+        vim._try_lose_focus(proc.pid)
+        for entry in find_vs_instances(config.VS_PROG_ID):
+            m_pid = _pid_from_moniker(entry["moniker_name"])
+            if m_pid == proc.pid and _is_process_alive(m_pid):
+                new_dte = entry["dte"]
+                new_pid = m_pid
+                break
+        if new_dte:
+            break
+        time.sleep(config.ROT_POLL_INTERVAL)
+
+    assert new_dte is not None, f"새 VS ROT 등록 타임아웃 (proc.pid={proc.pid})"
+    print(f"[debug_vs_ctx] ROT 등록 확인 pid={new_pid}")
+
+    # 솔루션 로드 + MainWindow 준비 대기
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        try:
+            _ = new_dte.MainWindow.Caption
+            if new_dte.Solution.IsOpen:
+                break
+        except Exception:
+            pass
+        time.sleep(1)
+    print(f"[debug_vs_ctx] 솔루션 로드: {new_dte.Solution.FullName}")
+
+    # 동기 빌드 — COM 이벤트 핸들러 없이 WaitForBuildToFinish=True 사용
+    print("[debug_vs_ctx] Debug 빌드 시작...")
+    sb = new_dte.Solution.SolutionBuild
+    sb.Build(WaitForBuildToFinish=True)
+    assert int(sb.LastBuildInfo) == 0, f"DebugTarget 빌드 실패: LastBuildInfo={sb.LastBuildInfo}"
+    print("[debug_vs_ctx] 빌드 완료")
+
+    yield {"dte": new_dte, "pid": new_pid}
+
+    # 정리: 디버거 중단 후 VS 종료
+    try:
+        if int(new_dte.Debugger.CurrentMode) != 1:
+            new_dte.Debugger.Stop(WaitForDesignMode=True)
+    except Exception:
+        pass
+    try:
+        new_dte.Quit()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="module")
+def debug_session_ctx(debug_vs_ctx):
+    """새 VS 인스턴스에 _SyncSTA 세션을 바인딩한다."""
+    import session_manager as sm
+    import com_bridge
+
+    dte = debug_vs_ctx["dte"]
+    pid = debug_vs_ctx["pid"]
+    session_id = "it-debug-01"
+
+    sta = _SyncSTA(pid, dte)
+    manager = sm.get_manager()
+    manager.bind_instance(session_id, pid, dte)
+    com_bridge._sta_registry[pid] = sta
+
+    yield {"session_id": session_id, "dte": dte, "pid": pid}
+
+    manager.unbind_instance(session_id)
+    com_bridge._sta_registry.pop(pid, None)
+
+
+# ---------------------------------------------------------------------------
+# IT-012: 브레이크포인트 설정 + 디버거 시작 → Break 모드 진입 확인
+# ---------------------------------------------------------------------------
+
+def test_debug_breakpoint_hit(debug_session_ctx):
+    """Program.cs:5에 BP 추가 후 디버거 시작, 실제로 Break 모드에 진입한다."""
+    from tools.debug import vs_debug_breakpoint, vs_debug_start
+
+    sid = debug_session_ctx["session_id"]
+    dte = debug_session_ctx["dte"]
+
+    # 기존 브레이크포인트 전체 제거 (클린 상태)
+    bps = dte.Debugger.Breakpoints
+    for i in range(bps.Count, 0, -1):
+        try:
+            bps.Item(i).Delete()
+        except Exception:
+            pass
+
+    # Program.cs:BP_LINE 브레이크포인트 추가
+    add_result = asyncio.run(_acall(vs_debug_breakpoint,
+                                    session_id=sid, action="add",
+                                    file=DEBUG_PROGRAM_CS, line=BP_LINE))
+    assert add_result["status"] == "added", f"bp 추가 실패: {add_result}"
+    print(f"\n  bp 추가 Program.cs:{BP_LINE} [OK]")
+
+    # 디버거 시작 — wait_for_break=False (blocking 없이 즉시 반환)
+    start_result = asyncio.run(_acall(vs_debug_start, session_id=sid, wait_for_break=False))
+    assert start_result["status"] in ("started", "already_running"), f"시작 실패: {start_result}"
+    print(f"  디버거 시작 -> mode={start_result['mode']}")
+
+    # Break 모드 진입 폴링 (최대 30초)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if int(dte.Debugger.CurrentMode) == 2:
+            break
+        time.sleep(0.5)
+
+    assert int(dte.Debugger.CurrentMode) == 2, (
+        "Break 모드 진입 실패 — 브레이크포인트에 걸리지 않음 (30초 타임아웃)"
+    )
+    print(f"  Break 모드 진입 확인 [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-013: Break 모드에서 로컬 변수 조회 (vs_debug_locals)
+# ---------------------------------------------------------------------------
+
+def test_debug_locals_in_break(debug_session_ctx):
+    """Break 모드에서 vs_debug_locals가 x=42, y=50, msg를 반환한다."""
+    from tools.debug import vs_debug_locals
+
+    result = asyncio.run(_acall(vs_debug_locals, session_id=debug_session_ctx["session_id"]))
+    assert result["count"] > 0, f"로컬 변수가 없음: {result}"
+
+    names = {v["name"] for v in result["locals"]}
+    assert "x" in names, f"'x' 없음: {names}"
+    assert "y" in names, f"'y' 없음: {names}"
+    assert "msg" in names, f"'msg' 없음: {names}"
+
+    x_var = next(v for v in result["locals"] if v["name"] == "x")
+    y_var = next(v for v in result["locals"] if v["name"] == "y")
+    assert x_var["value"] == "42", f"x != 42: {x_var['value']}"
+    assert y_var["value"] == "50", f"y != 50: {y_var['value']}"
+    print(f"\n  로컬 변수 {result['count']}개: x={x_var['value']}, y={y_var['value']} [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-014: Break 모드에서 표현식 평가 (vs_debug_evaluate)
+# ---------------------------------------------------------------------------
+
+def test_debug_evaluate_in_break(debug_session_ctx):
+    """Break 모드에서 표현식 평가가 올바른 값을 반환한다."""
+    from tools.debug import vs_debug_evaluate
+
+    sid = debug_session_ctx["session_id"]
+
+    result_sum = asyncio.run(_acall(vs_debug_evaluate, session_id=sid, expression="x + y"))
+    assert result_sum["is_valid"], f"x+y 평가 실패: {result_sum}"
+    assert result_sum["value"] == "92", f"x+y != 92: {result_sum['value']}"
+    print(f"\n  evaluate('x + y') = {result_sum['value']} [OK]")
+
+    result_msg = asyncio.run(_acall(vs_debug_evaluate, session_id=sid, expression="msg"))
+    assert result_msg["is_valid"], f"msg 평가 실패: {result_msg}"
+    assert "hello from debugger" in result_msg["value"], (
+        f"msg 값 불일치: {result_msg['value']}"
+    )
+    print(f"  evaluate('msg') = {result_msg['value']} [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-015: Break 모드에서 콜스택 조회 (vs_debug_callstack)
+# ---------------------------------------------------------------------------
+
+def test_debug_callstack_in_break(debug_session_ctx):
+    """Break 모드에서 vs_debug_callstack이 최소 1개 프레임을 반환한다.
+
+    .NET 8 관리 코드에서는 StackFrames 순회가 동작하지 않아 CurrentStackFrame
+    폴백으로 1개 프레임을 반환한다. file/line은 PDB 정보 가용 여부에 따라 빈 값일 수 있다.
+    """
+    from tools.debug import vs_debug_callstack
+
+    result = asyncio.run(_acall(vs_debug_callstack, session_id=debug_session_ctx["session_id"]))
+    assert result["depth"] >= 1, f"콜스택 프레임이 없음 (CurrentStackFrame 폴백도 실패): {result}"
+
+    top = result["frames"][0]
+    # function 이름은 존재해야 함 (빈 문자열이어도 오류 아님 — .NET 8 제약)
+    assert isinstance(top["function"], str)
+    print(f"\n  콜스택 {result['depth']}프레임, top='{top['function']}' line={top['line']} [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-016: Break 모드에서 Step Over (vs_debug_step)
+# ---------------------------------------------------------------------------
+
+def test_debug_step_over_in_break(debug_session_ctx):
+    """Break 모드에서 step over 후 다음 라인으로 이동한다."""
+    from tools.debug import vs_debug_step
+
+    result = asyncio.run(_acall(vs_debug_step,
+                                session_id=debug_session_ctx["session_id"],
+                                step_type="over"))
+    assert result["mode"] == "break", f"step 후 Break 모드 아님: {result['mode']}"
+    assert result["line"] > BP_LINE, f"step 후 라인이 {BP_LINE}을 초과하지 않음: {result['line']}"
+    print(f"\n  step over -> line={result['line']}, mode={result['mode']} [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-017: Break 모드에서 디버거 중단 (vs_debug_stop)
+# ---------------------------------------------------------------------------
+
+def test_debug_stop_from_break(debug_session_ctx):
+    """Break 모드에서 vs_debug_stop이 Design 모드로 복귀한다."""
+    from tools.debug import vs_debug_stop
+
+    result = asyncio.run(_acall(vs_debug_stop, session_id=debug_session_ctx["session_id"]))
+    assert result["status"] == "stopped", f"stop 실패: {result}"
+    assert result["mode"] == "design"
+    print(f"\n  vs_debug_stop -> status={result['status']}, mode={result['mode']} [OK]")
 
 
 # ---------------------------------------------------------------------------

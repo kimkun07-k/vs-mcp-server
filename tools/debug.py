@@ -196,7 +196,18 @@ async def vs_debug_step(
                 "mode": _mode_name(int(debugger.CurrentMode)),
             }
         except Exception:
-            return {"file": "", "line": -1, "function": "", "mode": _mode_name(int(debugger.CurrentMode))}
+            # .NET 8 관리 코드에서 FileName/LineNumber 접근 실패 시 ActiveDocument 폴백
+            try:
+                doc = sta.dte.ActiveDocument
+                sel = doc.Selection
+                return {
+                    "file": doc.FullName or "",
+                    "line": sel.CurrentLine,
+                    "function": "",
+                    "mode": _mode_name(int(debugger.CurrentMode)),
+                }
+            except Exception:
+                return {"file": "", "line": -1, "function": "", "mode": _mode_name(int(debugger.CurrentMode))}
 
     return await sta.submit(
         f"vs_debug_step_{step_type}", _step,
@@ -347,6 +358,24 @@ async def vs_debug_callstack(*, session_id: str) -> dict:
                     continue
         except Exception as e:
             logger.warning("StackFrames 순회 실패: %s", e)
+
+        # .NET 8 관리 코드에서 StackFrames가 빈 경우 CurrentStackFrame으로 폴백
+        if not frames:
+            try:
+                frame = debugger.CurrentStackFrame
+                func, file, line = "", "", 0
+                try:
+                    func = frame.FunctionName or ""
+                except Exception:
+                    pass
+                try:
+                    file = frame.FileName or ""
+                    line = frame.LineNumber
+                except Exception:
+                    pass
+                frames.append({"function": func, "file": file, "line": line, "module": "", "language": ""})
+            except Exception as e:
+                logger.warning("CurrentStackFrame 폴백 실패: %s", e)
 
         return {"frames": frames, "depth": len(frames)}
 
