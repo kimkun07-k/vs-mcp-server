@@ -1,0 +1,13 @@
+{
+  "project": "VS 2022 MCP Server — 기능 테스트",
+  "description": "구현된 모든 모듈의 단위/통합 테스트 작성 및 실행",
+  "stories": [
+    {"id": "UT-001", "title": "config 모듈 테스트", "passes": true},
+    {"id": "UT-002", "title": "crash_logger 모듈 테스트", "passes": true},
+    {"id": "UT-003", "title": "session_manager 모듈 테스트", "passes": true},
+    {"id": "UT-004", "title": "com_bridge 큐 로직 테스트", "passes": true},
+    {"id": "UT-005", "title": "utils/rot 모듈 테스트 (mock)", "passes": true},
+    {"id": "UT-006", "title": "tools/queue 도구 테스트 (mock)", "passes": true},
+    {"id": "UT-007", "title": "전체 pytest 스위트 51개 통과", "passes": true}
+  ]
+}

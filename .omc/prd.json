@@ -1,0 +1,127 @@
+{
+  "project": "VS 2022 MCP Server",
+  "description": "Python 기반 MCP 서버 - 여러 Claude Code 인스턴스가 Visual Studio 2022에 접근하여 빌드/디버깅/에디터 조작 수행",
+  "stories": [
+    {
+      "id": "US-001",
+      "phase": 1,
+      "title": "프로젝트 기반 구조 — config, crash_logger, utils/rot",
+      "passes": true,
+      "acceptanceCriteria": [
+        "config.py에 타임아웃 기본값(default=30, build=600, debug_evaluate=10, launch=120) 정의",
+        "crash_logger.py가 JSON 구조화 로그(timestamp, command, instance_pid, session_id 등)를 파일에 기록",
+        "utils/rot.py가 pythoncom.GetRunningObjectTable()로 ROT를 열거하는 함수 제공",
+        "python -c 'import config; import crash_logger; from utils import rot' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-002",
+      "phase": 1,
+      "title": "COM Bridge — STA 스레드, 명령 큐, 비동기 실행",
+      "passes": true,
+      "acceptanceCriteria": [
+        "com_bridge.py에 STAThread 클래스 구현 (STA 스레드 1개당 VS 인스턴스 1개)",
+        "즉시 채널(immediate)과 장시간 채널(long_running) 두 개의 큐 분리",
+        "submit_command() 메서드가 asyncio.Future를 반환하여 await 가능",
+        "python -c 'import com_bridge' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-003",
+      "phase": 1,
+      "title": "VS Instance Manager — ROT 탐색, DTE 획득, devenv.exe 실행",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_instance_manager.py에 list_instances()가 ROT에서 VisualStudio.DTE.17.0 모니커 열거",
+        "get_dte_by_pid()가 PID로 DTE COM 객체 반환",
+        "launch_vs()가 devenv.exe를 subprocess.Popen으로 실행 후 ROT 폴링으로 DTE 획득",
+        "python -c 'import vs_instance_manager' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-004",
+      "phase": 1,
+      "title": "Session Manager — 클라이언트 세션 ↔ VS 인스턴스 매핑",
+      "passes": true,
+      "acceptanceCriteria": [
+        "session_manager.py에 SessionManager 클래스 구현",
+        "create_session(), get_session(), remove_session() 메서드 제공",
+        "세션-인스턴스 매핑을 in-memory dict로 관리",
+        "python -c 'import session_manager' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-004b",
+      "phase": 1,
+      "title": "인스턴스 관리 도구 — tools/instance.py",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_list_instances, vs_connect, vs_launch, vs_close 도구 구현",
+        "vs_connect가 PID 또는 솔루션 경로로 DTE 획득 + STA 스레드 할당 + 세션 바인딩",
+        "vs_launch가 devenv.exe 실행 후 ROT 폴링으로 자동 연결",
+        "python -c 'from tools import instance' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-005",
+      "phase": 2,
+      "title": "에디터 도구 — tools/editor.py",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_file_open, vs_file_goto, vs_file_highlight, vs_file_list_open 도구 구현",
+        "vs_file_active, vs_file_selection 도구 구현",
+        "각 도구가 com_bridge의 submit_command()를 통해 STA 스레드에서 COM 호출",
+        "python -c 'from tools import editor' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-006",
+      "phase": 3,
+      "title": "빌드 도구 — tools/build.py",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_build_solution이 SolutionBuild.Build(WaitForBuildToFinish=False) + OnBuildDone 이벤트 대기",
+        "vs_build_project, vs_build_status, vs_error_list 도구 구현",
+        "타임아웃 파라미터 지원 (기본 600초)",
+        "python -c 'from tools import build' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-007",
+      "phase": 4,
+      "title": "디버깅 도구 — tools/debug.py",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_debug_start, vs_debug_stop 도구 구현 (Debugger.Go/Stop)",
+        "vs_debug_breakpoint 도구 구현 (추가/제거/목록 조회)",
+        "vs_debug_step, vs_debug_locals, vs_debug_evaluate, vs_debug_callstack 구현",
+        "vs_debug_evaluate는 crash_logger에 표현식/결과 기록",
+        "python -c 'from tools import debug' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-008",
+      "phase": 5,
+      "title": "큐 관리 도구 — tools/queue.py",
+      "passes": true,
+      "acceptanceCriteria": [
+        "vs_queue_status가 현재 실행 중인 명령 + 대기 큐 목록 반환",
+        "vs_queue_cancel이 command_id로 대기 항목 취소",
+        "vs_queue_history가 최근 N건 명령 이력 반환",
+        "python -c 'from tools import queue' 가 syntax/import 오류 없이 실행"
+      ]
+    },
+    {
+      "id": "US-009",
+      "phase": 6,
+      "title": "MCP 서버 진입점 — server.py + 전체 통합",
+      "passes": true,
+      "acceptanceCriteria": [
+        "server.py에 mcp SDK로 모든 도구(22개) 등록",
+        "tools/ 하위 모든 모듈(instance, editor, build, debug, queue) 통합",
+        "python -c 'import server' 가 syntax/import 오류 없이 실행",
+        "tools/__init__.py, utils/__init__.py 존재"
+      ]
+    }
+  ]
+}

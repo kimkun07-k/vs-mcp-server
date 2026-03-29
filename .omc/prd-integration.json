@@ -1,0 +1,110 @@
+{
+  "project": "VS 2022 MCP Server — 실제 Visual Studio 통합 테스트",
+  "description": "mock 없이 실제 VS 2022 인스턴스에 대해 각 기능을 검증",
+  "stories": [
+    {
+      "id": "IT-001",
+      "title": "VS 실행 및 인스턴스 감지",
+      "acceptanceCriteria": [
+        "ROT에서 VS 인스턴스를 찾아 PID와 모니커 반환 [PASS: pid=18872]",
+        "모니커에서 추출한 PID가 tasklist devenv.exe와 일치 [PASS]",
+        "get_vs_pid() 버그 수정 — win32process로 올바른 PID 반환 [PASS: pid=18872, LocaleID 버그 제거]",
+        "스테일 ROT 항목 필터링 (_is_process_alive) [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-002",
+      "title": "DTE 기본 속성 접근",
+      "acceptanceCriteria": [
+        "dte.MainWindow.Caption 접근 가능 [PASS: 'Dallokan - config.py - Microsoft Visual Studio']",
+        "dte.Solution.FullName 반환 [PASS: Dallokan.sln]",
+        "dte.Version이 '17.' 로 시작 [PASS: '17.0']"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-003",
+      "title": "파일 열기 (vs_file_open)",
+      "acceptanceCriteria": [
+        "vs_file_open status=='opened' [PASS]",
+        "ActiveDocument.FullName이 config.py와 일치 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-004",
+      "title": "열린 파일 목록 및 활성 파일",
+      "acceptanceCriteria": [
+        "vs_file_list_open 결과에 config.py 포함 [PASS: 11개 파일]",
+        "vs_file_active path/line/column 반환 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-005",
+      "title": "빌드 상태 조회 (vs_build_status)",
+      "acceptanceCriteria": [
+        "build_state가 유효한 값 반환 [PASS: not_started]",
+        "last_build_failed_projects가 정수 [PASS: -1]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-006",
+      "title": "브레이크포인트 CRUD (vs_debug_breakpoint)",
+      "acceptanceCriteria": [
+        "list 반환 [PASS: 초기 3개]",
+        "add 후 list 확인 [PASS: config.py:5 추가]",
+        "remove 후 list에서 삭제 확인 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-007",
+      "title": "디버거 모드 확인",
+      "acceptanceCriteria": [
+        "Debugger.CurrentMode==1 (Design) [PASS]",
+        "vs_debug_stop() -> 'not_debugging' [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-008",
+      "title": "실제 STAThread 큐 경로 검증",
+      "acceptanceCriteria": [
+        "STAThread 내부 STA에서 find_vs_instances()로 DTE 재획득 후 Version 반환 [PASS: '17.0']",
+        "STAThread 명령 이력(get_history)에 done 상태로 기록 [PASS]",
+        "cross-apartment 문제(RPC_E_WRONG_THREAD) 없이 실행 [PASS: ROT 재획득 패턴으로 해결]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-009",
+      "title": "파일 커서 이동 (vs_file_goto)",
+      "acceptanceCriteria": [
+        "vs_file_goto status=='moved' [PASS]",
+        "vs_file_active 결과 line이 target_line(3)과 일치 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-010",
+      "title": "범위 하이라이트 (vs_file_highlight)",
+      "acceptanceCriteria": [
+        "vs_file_highlight status=='highlighted' [PASS]",
+        "start_line=1, end_line=2 반환 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "IT-011",
+      "title": "선택 텍스트 조회 (vs_file_selection)",
+      "acceptanceCriteria": [
+        "vs_file_selection path/start_line/end_line/text 반환 [PASS]",
+        "IT-010 highlight 후 lines 1-2의 텍스트가 포함됨 [PASS]"
+      ],
+      "passes": true
+    }
+  ]
+}
