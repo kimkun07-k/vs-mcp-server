@@ -40,29 +40,36 @@ def test_iter_rot_monikers_yields_entries():
 
 
 def test_find_vs_instances_filters_by_prog_id():
-    """find_vs_instances가 prog_id를 포함하는 모니커만 반환."""
+    """find_vs_instances가 prog_id 미포함 모니커를 제외하고 일치하는 것만 반환."""
+    mock_obj_vs = MagicMock()
+    mock_obj_other = MagicMock()
     mock_entries = [
-        ("!VisualStudio.DTE.17.0:1111", MagicMock()),
-        ("!SomeOtherApp:2222", MagicMock()),
+        ("!VisualStudio.DTE.17.0:1111", mock_obj_vs),
+        ("!SomeOtherApp:2222", mock_obj_other),
     ]
 
     mock_dte = MagicMock()
-    mock_dispatch = MagicMock(return_value=mock_dte)
+    mock_pythoncom = MagicMock()
+    mock_wcc = MagicMock()
+    mock_wcc.Dispatch.return_value = mock_dte
+    # win32com.client.Dispatch 접근 경로 양쪽 모두 패치
+    mock_win32com = MagicMock()
+    mock_win32com.client = mock_wcc
 
     with patch("utils.rot.iter_rot_monikers", return_value=mock_entries), \
          patch.dict("sys.modules", {
-             "pythoncom": MagicMock(),
-             "win32com": MagicMock(),
-             "win32com.client": MagicMock(),
+             "pythoncom": mock_pythoncom,
+             "win32com": mock_win32com,
+             "win32com.client": mock_wcc,
          }):
-        import win32com.client as wcc
-        wcc.Dispatch = mock_dispatch
-
         results = rot.find_vs_instances("VisualStudio.DTE.17.0")
 
-    # "VisualStudio" 포함하는 항목만 반환
-    vs_results = [r for r in results if "VisualStudio" in r["moniker_name"]]
-    assert len(vs_results) >= 0  # mock 환경에서 dispatch 실패 시 0도 허용
+    # "SomeOtherApp" 항목은 반드시 제외
+    moniker_names = [r["moniker_name"] for r in results]
+    assert all("SomeOtherApp" not in n for n in moniker_names)
+    # VisualStudio 항목은 포함 (Dispatch 성공 시)
+    assert len(results) == 1
+    assert "VisualStudio" in results[0]["moniker_name"]
 
 
 def test_find_vs_instances_empty_rot():
@@ -73,22 +80,22 @@ def test_find_vs_instances_empty_rot():
 
 
 def test_get_vs_pid_via_window():
-    """get_vs_pid가 win32process.GetWindowThreadProcessId를 활용."""
+    """get_vs_pid가 win32process.GetWindowThreadProcessId로 PID 9876 반환."""
     mock_dte = MagicMock()
+    # LocaleID를 문자열로 설정 → int() 변환 실패 → 두 번째 경로(win32)로 진행
+    mock_dte.LocaleID = "invalid"
     mock_dte.MainWindow.HWnd = 12345
 
+    mock_win32process = MagicMock()
+    mock_win32process.GetWindowThreadProcessId.return_value = (0, 9876)
+
     with patch.dict("sys.modules", {
-        "win32process": MagicMock(),
+        "win32process": mock_win32process,
         "win32gui": MagicMock(),
     }):
-        import win32process
-        import win32gui
-        win32process.GetWindowThreadProcessId.return_value = (0, 9876)
-        win32gui.GetForegroundWindow.return_value = None
-
         pid = rot.get_vs_pid(mock_dte)
-        # mock 환경에서 PID 반환
-        assert pid is None or isinstance(pid, int)
+
+    assert pid == 9876
 
 
 def test_get_vs_pid_returns_none_on_failure():
