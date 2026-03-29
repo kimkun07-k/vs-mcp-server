@@ -1,6 +1,5 @@
 """UT-004: com_bridge 레지스트리 로직 테스트 (STA 스레드 mock)"""
 import sys
-import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
