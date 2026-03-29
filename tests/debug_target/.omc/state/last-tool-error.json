@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd C:/Dallokan/vs-mcp-server/tests/debug_target && dotnet new sln -n DebugTarget --force 2>&1 && dotnet sln DebugTarget.sln add DebugTarget.csproj 2>&1 && dotnet build -c Debug 2>&1 | tail...",
-  "error": "Exit code 1\n\"솔루션 파일\" 템플릿이 성공적으로 생성되었습니다.\r\n\r\n솔루션 또는 디렉터리 'DebugTarget.sln'을(를) 찾을 수 없습니다.",
-  "timestamp": "2026-03-29T10:09:29.306Z",
-  "retry_count": 1
-}
