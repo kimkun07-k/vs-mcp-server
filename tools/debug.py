@@ -62,7 +62,7 @@ async def vs_debug_start(
     return await sta.submit(
         "vs_debug_start", _start,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -85,7 +85,7 @@ async def vs_debug_stop(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_debug_stop", _stop,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -163,7 +163,7 @@ async def vs_debug_breakpoint(
     return await sta.submit(
         f"vs_debug_breakpoint_{action}", _bp,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -215,7 +215,7 @@ async def vs_debug_step(
     return await sta.submit(
         f"vs_debug_step_{step_type}", _step,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -257,7 +257,7 @@ async def vs_debug_locals(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_debug_locals", _locals,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -334,7 +334,7 @@ async def vs_debug_evaluate(
     return await sta.submit(
         "vs_debug_evaluate", _evaluate,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -376,5 +376,5 @@ async def vs_debug_callstack(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_debug_callstack", _callstack,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )

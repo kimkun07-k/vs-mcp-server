@@ -138,7 +138,7 @@ async def vs_close(
                 logger.warning("SaveAll 실패: %s", e)
         dte.Quit()
 
-    await sta.submit("vs_close", _close, session_id=session_id, loop=asyncio.get_event_loop())
+    await sta.submit("vs_close", _close, session_id=session_id, loop=asyncio.get_running_loop())
 
     if pid:
         com_bridge.remove_sta(pid)

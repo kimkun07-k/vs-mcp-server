@@ -48,7 +48,7 @@ async def vs_build_solution(
         timeout = config.timeouts["build"]
 
     sta = _get_sta(session_id)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     done_event = asyncio.Event()
     build_result: dict = {}
 
@@ -67,13 +67,15 @@ async def vs_build_solution(
         output_lines: list[str] = []
 
         def _on_build_done(scope, action, project_config, platform, succeeded):
+            # 핸들러 누적 방지: 호출 즉시 자기 자신을 제거
+            try:
+                build_events.OnBuildDone -= _on_build_done
+            except Exception:
+                pass
             build_result["success"] = bool(succeeded)
             build_result["failed_projects"] = int(sb.LastBuildInfo)
             build_result["output"] = "\n".join(output_lines)
             loop.call_soon_threadsafe(done_event.set)
-
-        def _on_output(project, project_config, platform, solution_config, succeeded):
-            pass  # 프로젝트별 완료
 
         try:
             build_events.OnBuildDone += _on_build_done
@@ -135,7 +137,7 @@ async def vs_build_project(
         timeout = config.timeouts["build"]
 
     sta = _get_sta(session_id)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     done_event = asyncio.Event()
     build_result: dict = {}
 
@@ -153,6 +155,11 @@ async def vs_build_project(
         build_events = dte.Events.BuildEvents
 
         def _on_build_done(scope, action, project_config, platform, succeeded):
+            # 핸들러 누적 방지: 호출 즉시 자기 자신을 제거
+            try:
+                build_events.OnBuildDone -= _on_build_done
+            except Exception:
+                pass
             build_result["success"] = bool(succeeded)
             build_result["project_name"] = project_name
             build_result["failed_projects"] = int(sb.LastBuildInfo)
@@ -225,7 +232,7 @@ async def vs_build_status(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_build_status", _status,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -300,5 +307,5 @@ async def vs_error_list(
     return await sta.submit(
         "vs_error_list", _error_list,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )

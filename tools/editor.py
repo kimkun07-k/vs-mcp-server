@@ -45,7 +45,7 @@ async def vs_file_open(
     return await sta.submit(
         "vs_file_open", _open,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -85,7 +85,7 @@ async def vs_file_goto(
     return await sta.submit(
         "vs_file_goto", _goto,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -151,7 +151,7 @@ async def vs_file_highlight(
     return await sta.submit(
         "vs_file_highlight", _highlight,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -189,7 +189,7 @@ async def vs_file_list_open(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_file_list_open", _list,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -224,7 +224,7 @@ async def vs_file_active(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_file_active", _active,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 
@@ -265,7 +265,7 @@ async def vs_file_selection(*, session_id: str) -> dict:
     return await sta.submit(
         "vs_file_selection", _selection,
         session_id=session_id,
-        loop=asyncio.get_event_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
 

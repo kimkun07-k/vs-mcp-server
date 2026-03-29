@@ -73,7 +73,7 @@ class STAThread:
     ) -> asyncio.Future:
         """명령을 큐에 제출하고 asyncio.Future를 반환한다."""
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         fut: asyncio.Future = loop.create_future()
         cmd = Command(
             command_id=str(uuid.uuid4()),
