@@ -6,3 +6,5 @@ venv/
 logs/
 *.jsonl
 .env
+dist/
+.omc/state/
