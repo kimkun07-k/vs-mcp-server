@@ -7,10 +7,10 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-import com_bridge
-import config
-import session_manager as sm
-import vs_instance_manager as vim
+from .. import com_bridge
+from .. import config
+from .. import session_manager as sm
+from .. import vs_instance_manager as vim
 
 logger = logging.getLogger(__name__)
 

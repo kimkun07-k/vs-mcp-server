@@ -20,12 +20,10 @@ from typing import Any, Callable, Optional
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from vs_mcp_server import config
+from vs_mcp_server import vs_instance_manager as vim
 
-import config
-import vs_instance_manager as vim
-
-TEST_FILE = str(Path(__file__).parent.parent / "config.py")
+TEST_FILE = str(Path(__file__).parent.parent / "vs_mcp_server" / "config.py")
 DEBUG_PROGRAM_CS = str(Path(__file__).parent / "debug_target" / "Program.cs")
 DEBUG_SLN = str(Path(__file__).parent / "debug_target" / "DebugTarget.sln")
 BP_LINE = 5  # Console.WriteLine in Program.cs

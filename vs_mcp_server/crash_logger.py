@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-import config
+from . import config
 
 logger = logging.getLogger(__name__)
 _lock = threading.Lock()

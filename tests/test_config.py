@@ -1,10 +1,5 @@
 """UT-001: config 모듈 테스트"""
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import config
+from vs_mcp_server import config
 
 
 def test_timeout_default():

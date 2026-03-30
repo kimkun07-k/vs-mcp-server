@@ -1,12 +1,9 @@
 """UT-006: tools/queue 도구 테스트 (mock STAThread 기반)"""
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import com_bridge
-from tools import queue as queue_tools
+from vs_mcp_server import com_bridge
+from vs_mcp_server.tools import queue as queue_tools
 
 
 def _mock_sta(pid: int, current=None, queued=None, history=None) -> MagicMock:

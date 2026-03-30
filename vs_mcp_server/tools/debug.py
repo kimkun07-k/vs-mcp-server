@@ -10,9 +10,9 @@ import logging
 import time
 from typing import Literal, Optional
 
-import config
-import crash_logger
-import session_manager as sm
+from .. import config
+from .. import crash_logger
+from .. import session_manager as sm
 
 logger = logging.getLogger(__name__)
 

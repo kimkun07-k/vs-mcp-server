@@ -9,7 +9,7 @@ import asyncio
 import logging
 from typing import Optional
 
-import session_manager as sm
+from .. import session_manager as sm
 
 logger = logging.getLogger(__name__)
 

@@ -1,12 +1,10 @@
 """UT-002: crash_logger 모듈 테스트"""
 import json
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import config
+from vs_mcp_server import config
+from vs_mcp_server import crash_logger
 
 
 def _read_last_log(log_file: Path) -> dict:
@@ -15,7 +13,6 @@ def _read_last_log(log_file: Path) -> dict:
 
 
 def test_log_event_writes_jsonl(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         crash_logger.log_event(
@@ -33,7 +30,6 @@ def test_log_event_writes_jsonl(tmp_path):
 
 
 def test_log_event_optional_fields(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         crash_logger.log_event(
@@ -52,7 +48,6 @@ def test_log_event_optional_fields(tmp_path):
 
 
 def test_log_com_error(tmp_path):
-    import crash_logger
     exc = RuntimeError("COM connection failed")
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
@@ -71,7 +66,6 @@ def test_log_com_error(tmp_path):
 
 
 def test_log_timeout(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         crash_logger.log_timeout(
@@ -87,7 +81,6 @@ def test_log_timeout(tmp_path):
 
 
 def test_log_evaluate_success(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         crash_logger.log_evaluate(
@@ -104,7 +97,6 @@ def test_log_evaluate_success(tmp_path):
 
 
 def test_log_evaluate_error(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         crash_logger.log_evaluate(
@@ -121,7 +113,6 @@ def test_log_evaluate_error(tmp_path):
 
 
 def test_multiple_log_entries(tmp_path):
-    import crash_logger
     with patch.object(config, "LOG_DIR", tmp_path), \
          patch.object(config, "LOG_FILE", tmp_path / "test.jsonl"):
         for i in range(3):

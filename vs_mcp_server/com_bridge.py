@@ -17,8 +17,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-import config
-import crash_logger
+from . import config
+from . import crash_logger
 
 logger = logging.getLogger(__name__)
 

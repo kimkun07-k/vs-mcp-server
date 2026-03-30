@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-import config  # noqa: E402
+from . import config  # noqa: E402
 
 # 로그 디렉토리 생성
 config.LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,12 +26,12 @@ from mcp.server import Server  # noqa: E402
 from mcp.server.stdio import stdio_server  # noqa: E402
 from mcp import types  # noqa: E402
 
-import session_manager as sm  # noqa: E402
-from tools import instance as instance_tools  # noqa: E402
-from tools import editor as editor_tools  # noqa: E402
-from tools import build as build_tools  # noqa: E402
-from tools import debug as debug_tools  # noqa: E402
-from tools import queue as queue_tools  # noqa: E402
+from . import session_manager as sm  # noqa: E402
+from .tools import instance as instance_tools  # noqa: E402
+from .tools import editor as editor_tools  # noqa: E402
+from .tools import build as build_tools  # noqa: E402
+from .tools import debug as debug_tools  # noqa: E402
+from .tools import queue as queue_tools  # noqa: E402
 
 app = Server("vs-mcp-server")
 

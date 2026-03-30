@@ -1,11 +1,8 @@
 """UT-005: utils/rot 모듈 테스트 (mock 기반)"""
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from utils import rot
+from vs_mcp_server.utils import rot
 
 
 def _make_mock_moniker(display_name: str, obj=None):
@@ -56,7 +53,7 @@ def test_find_vs_instances_filters_by_prog_id():
     mock_win32com = MagicMock()
     mock_win32com.client = mock_wcc
 
-    with patch("utils.rot.iter_rot_monikers", return_value=mock_entries), \
+    with patch("vs_mcp_server.utils.rot.iter_rot_monikers", return_value=mock_entries), \
          patch.dict("sys.modules", {
              "pythoncom": mock_pythoncom,
              "win32com": mock_win32com,
@@ -74,7 +71,7 @@ def test_find_vs_instances_filters_by_prog_id():
 
 def test_find_vs_instances_empty_rot():
     """ROT가 비어 있을 때 빈 리스트 반환."""
-    with patch("utils.rot.iter_rot_monikers", return_value=[]):
+    with patch("vs_mcp_server.utils.rot.iter_rot_monikers", return_value=[]):
         results = rot.find_vs_instances("VisualStudio.DTE.17.0")
     assert results == []
 

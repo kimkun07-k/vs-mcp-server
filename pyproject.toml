@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vs-mcp-server"
+version = "0.1.0"
+description = "Visual Studio 2022 MCP server — control VS via Claude Code (COM/DTE automation)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["mcp", "visual-studio", "com", "dte", "claude"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+    "mcp>=1.0",
+    "pywin32>=306",
+]
+
+[project.scripts]
+vs-mcp-server = "vs_mcp_server.__main__:_entry"
+
+[project.urls]
+Repository = "https://github.com/panninghour/vs-mcp-server"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vs_mcp_server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,91 @@
+{
+  "project": "vs-mcp-server PyPI 패키징 (Option A)",
+  "description": "파일을 vs_mcp_server/ 패키지로 구조화하고 pyproject.toml 작성 후 PyPI 배포 준비",
+  "stories": [
+    {
+      "id": "PKG-001",
+      "title": "pyproject.toml 작성",
+      "acceptanceCriteria": [
+        "pyproject.toml이 vs-mcp-server/ 루트에 존재 [PASS]",
+        "[project] 섹션: name=vs-mcp-server, requires-python>=3.11 [PASS]",
+        "[project.dependencies]: mcp, pywin32 [PASS]",
+        "[project.scripts]: vs-mcp-server = vs_mcp_server.__main__:_entry [PASS]",
+        "[build-system]: hatchling 지정 [PASS]",
+        "pip install -e . 가 오류 없이 완료 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-002",
+      "title": "vs_mcp_server/ 패키지 디렉토리 생성 및 파일 이동 (git mv)",
+      "acceptanceCriteria": [
+        "vs_mcp_server/ 디렉토리 존재 [PASS]",
+        "vs_mcp_server/__init__.py 존재 [PASS]",
+        "vs_mcp_server/__main__.py 존재 (_entry 함수 포함) [PASS]",
+        "server.py 등 모든 루트 .py 파일이 vs_mcp_server/ 아래로 이동 [PASS]",
+        "tools/, utils/ 가 vs_mcp_server/tools/, vs_mcp_server/utils/ 로 이동 [PASS]",
+        "git mv로 이동 (history 보존) [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-003",
+      "title": "vs_mcp_server/ 내부 임포트를 relative import로 수정",
+      "acceptanceCriteria": [
+        "vs_mcp_server/*.py 에서 bare import → from . import 또는 from .. import [PASS]",
+        "vs_mcp_server/tools/*.py 에서 from .. import config/crash_logger/session_manager 등 [PASS]",
+        "python -c 'from vs_mcp_server.__main__ import _entry; print(\"OK\")' 정상 실행 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-004",
+      "title": "테스트 임포트 수정",
+      "acceptanceCriteria": [
+        "sys.path.insert hack 모두 제거 [PASS]",
+        "from vs_mcp_server import config/com_bridge/session_manager/vs_instance_manager [PASS]",
+        "patch() 경로도 vs_mcp_server.com_bridge.STAThread 등으로 수정 [PASS]",
+        "인라인 import crash_logger/com_bridge 제거 및 상단 import로 통합 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-005",
+      "title": "단위 테스트 통과 확인",
+      "acceptanceCriteria": [
+        "pytest tests/ --ignore=tests/test_integration_vs.py -v → 51/51 PASSED [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-006",
+      "title": "엔트리포인트 동작 확인",
+      "acceptanceCriteria": [
+        "python -c 'from vs_mcp_server.__main__ import _entry; print(\"entry OK\")' 성공 [PASS]",
+        "mcp 1.26.0 설치 확인 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-007",
+      "title": "README 빠른 시작 업데이트",
+      "acceptanceCriteria": [
+        "빠른 시작 Step 1이 pip install git+URL / pip install vs-mcp-server 방식으로 교체 [PASS]",
+        "uvx vs-mcp-server 방식 포함 [PASS]",
+        ".mcp.json 예시에서 command가 uvx 또는 vs-mcp-server 사용 [PASS]",
+        "개발자용 git clone 방법은 별도 섹션으로 유지 [PASS]"
+      ],
+      "passes": true
+    },
+    {
+      "id": "PKG-008",
+      "title": "PyPI 배포 빌드 준비 (upload 전 중단)",
+      "acceptanceCriteria": [
+        "python -m build → dist/vs_mcp_server-0.1.0-py3-none-any.whl 생성 [PASS]",
+        "python -m build → dist/vs_mcp_server-0.1.0.tar.gz 생성 [PASS]",
+        "twine check dist/* PASSED [PASS]"
+      ],
+      "passes": true
+    }
+  ]
+}

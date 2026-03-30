@@ -8,9 +8,9 @@ import asyncio
 import logging
 from typing import Optional
 
-import config
-import crash_logger
-import session_manager as sm
+from .. import config
+from .. import crash_logger
+from .. import session_manager as sm
 
 logger = logging.getLogger(__name__)
 

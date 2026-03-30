@@ -8,8 +8,8 @@ import asyncio
 import logging
 from typing import Optional
 
-import com_bridge
-import config
+from .. import com_bridge
+from .. import config
 
 logger = logging.getLogger(__name__)
 

@@ -14,9 +14,9 @@ import subprocess
 import time
 from typing import Optional
 
-import config
-import crash_logger
-from utils.rot import find_vs_instances, get_vs_pid
+from . import config
+from . import crash_logger
+from .utils.rot import find_vs_instances, get_vs_pid
 
 logger = logging.getLogger(__name__)
 

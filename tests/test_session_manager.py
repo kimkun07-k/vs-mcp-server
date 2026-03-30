@@ -1,12 +1,10 @@
 """UT-003: session_manager 모듈 테스트"""
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import session_manager as sm
-from session_manager import SessionManager, Session
+from vs_mcp_server import com_bridge
+from vs_mcp_server import session_manager as sm
+from vs_mcp_server.session_manager import SessionManager, Session
 
 
 def _fresh_manager() -> SessionManager:
@@ -95,7 +93,6 @@ def test_session_no_pid_by_default():
 def test_unbind_instance():
     mgr = _fresh_manager()
     mock_dte = MagicMock()
-    import com_bridge
     with patch.object(com_bridge, "get_or_create_sta", return_value=MagicMock()), \
          patch.object(com_bridge, "get_sta", return_value=MagicMock()):
         mgr.bind_instance("sess-f", 9999, mock_dte)

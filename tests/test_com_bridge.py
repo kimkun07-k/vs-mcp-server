@@ -1,11 +1,8 @@
 """UT-004: com_bridge 레지스트리 로직 테스트 (STA 스레드 mock)"""
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import com_bridge
+from vs_mcp_server import com_bridge
 
 
 def _mock_sta(pid: int) -> MagicMock:
@@ -18,7 +15,7 @@ def test_get_or_create_sta_creates_new():
     """동일 pid 첫 호출 시 STAThread 생성."""
     mock_dte = MagicMock()
     with patch.object(com_bridge, "_sta_registry", {}), \
-         patch("com_bridge.STAThread", return_value=_mock_sta(12345)) as MockSTA:
+         patch("vs_mcp_server.com_bridge.STAThread", return_value=_mock_sta(12345)) as MockSTA:
         sta = com_bridge.get_or_create_sta(12345, mock_dte)
         MockSTA.assert_called_once_with(12345, mock_dte)
         assert sta is not None

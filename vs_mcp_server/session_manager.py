@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-import com_bridge
+from . import com_bridge
 
 logger = logging.getLogger(__name__)
 
