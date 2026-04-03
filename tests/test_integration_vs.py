@@ -99,7 +99,7 @@ def vs_ctx(com_sta):
     com_sta가 CoInitialize를 유지하므로 추가 CoInit 불필요.
     스테일 ROT 항목(실제 프로세스 없음)은 필터링한다.
     """
-    from utils.rot import find_vs_instances
+    from vs_mcp_server.utils.rot import find_vs_instances
 
     all_entries = find_vs_instances(config.VS_PROG_ID)
     entries = [
@@ -145,8 +145,8 @@ def vs_ctx(com_sta):
 @pytest.fixture(scope="module")
 def session_ctx(vs_ctx):
     """_SyncSTA를 session_manager에 등록하고 session_id를 반환한다."""
-    import session_manager as sm
-    import com_bridge
+    from vs_mcp_server import session_manager as sm
+    from vs_mcp_server import com_bridge
 
     dte = vs_ctx["dte"]
     pid = vs_ctx["pid"]
@@ -169,7 +169,7 @@ def session_ctx(vs_ctx):
 
 def test_rot_finds_vs_instance(vs_ctx):
     """ROT에서 VS 인스턴스를 찾아 PID와 모니커를 반환한다."""
-    from utils.rot import find_vs_instances
+    from vs_mcp_server.utils.rot import find_vs_instances
 
     # com_sta 컨텍스트 내에서 직접 호출 — 추가 CoInitialize 없음
     entries = find_vs_instances(config.VS_PROG_ID)
@@ -193,7 +193,7 @@ def test_vs_pid_matches_tasklist(vs_ctx):
 
 def test_get_vs_pid_returns_correct_pid(vs_ctx):
     """get_vs_pid()가 모니커에서 추출한 PID와 동일한 값을 반환한다."""
-    from utils.rot import get_vs_pid
+    from vs_mcp_server.utils.rot import get_vs_pid
 
     dte = vs_ctx["dte"]
     reported = get_vs_pid(dte)
@@ -239,7 +239,7 @@ def test_dte_version(vs_ctx):
 
 def test_file_open_config_py(session_ctx):
     """vs_file_open이 config.py를 VS에서 실제로 연다."""
-    from tools.editor import vs_file_open
+    from vs_mcp_server.tools.editor import vs_file_open
 
     result = asyncio.run(_acall(vs_file_open, session_id=session_ctx["session_id"], path=TEST_FILE))
     assert result["status"] == "opened", f"파일 열기 실패: {result}"
@@ -262,7 +262,7 @@ def test_file_open_config_py(session_ctx):
 
 def test_file_list_open_contains_config(session_ctx):
     """vs_file_list_open이 열린 파일 목록을 반환하고 config.py를 포함한다."""
-    from tools.editor import vs_file_list_open
+    from vs_mcp_server.tools.editor import vs_file_list_open
 
     result = asyncio.run(_acall(vs_file_list_open, session_id=session_ctx["session_id"]))
     assert "files" in result
@@ -277,7 +277,7 @@ def test_file_list_open_contains_config(session_ctx):
 
 def test_file_active_returns_position(session_ctx):
     """vs_file_active가 현재 파일 경로와 커서 위치를 반환한다."""
-    from tools.editor import vs_file_active
+    from vs_mcp_server.tools.editor import vs_file_active
 
     result = asyncio.run(_acall(vs_file_active, session_id=session_ctx["session_id"]))
     assert result.get("path"), f"활성 파일 path 없음: {result}"
@@ -292,7 +292,7 @@ def test_file_active_returns_position(session_ctx):
 
 def test_build_status_returns_valid_state(session_ctx):
     """vs_build_status가 유효한 build_state와 last_build_failed_projects를 반환한다."""
-    from tools.build import vs_build_status
+    from vs_mcp_server.tools.build import vs_build_status
 
     result = asyncio.run(_acall(vs_build_status, session_id=session_ctx["session_id"]))
     assert result["build_state"] in ("not_started", "in_progress", "done"), (
@@ -309,7 +309,7 @@ def test_build_status_returns_valid_state(session_ctx):
 
 def test_breakpoint_list(session_ctx):
     """vs_debug_breakpoint list가 breakpoints 목록을 반환한다."""
-    from tools.debug import vs_debug_breakpoint
+    from vs_mcp_server.tools.debug import vs_debug_breakpoint
 
     result = asyncio.run(_acall(vs_debug_breakpoint,
                                 session_id=session_ctx["session_id"], action="list"))
@@ -319,7 +319,7 @@ def test_breakpoint_list(session_ctx):
 
 def test_breakpoint_add(session_ctx):
     """브레이크포인트를 추가하면 list에서 확인된다."""
-    from tools.debug import vs_debug_breakpoint
+    from vs_mcp_server.tools.debug import vs_debug_breakpoint
 
     sid = session_ctx["session_id"]
     bp_line = 5
@@ -340,7 +340,7 @@ def test_breakpoint_add(session_ctx):
 
 def test_breakpoint_remove(session_ctx):
     """브레이크포인트 제거 후 목록에서 사라진다."""
-    from tools.debug import vs_debug_breakpoint
+    from vs_mcp_server.tools.debug import vs_debug_breakpoint
 
     sid = session_ctx["session_id"]
     bp_line = 5
@@ -371,7 +371,7 @@ def test_breakpoint_remove(session_ctx):
 @pytest.fixture(scope="module")
 def sta_thread_ctx(vs_ctx):
     """실제 com_bridge.STAThread를 생성하고 DTE를 큐로 호출한다."""
-    import com_bridge
+    from vs_mcp_server import com_bridge
 
     pid = vs_ctx["pid"]
     dte = vs_ctx["dte"]
@@ -393,8 +393,8 @@ def test_sta_thread_queue_executes_fn(sta_thread_ctx):
 
     def _get_version_in_sta():
         """STAThread 내 STA에서 ROT DTE를 획득하여 Version을 반환한다."""
-        from utils.rot import find_vs_instances
-        import config as cfg
+        from vs_mcp_server.utils.rot import find_vs_instances
+        from vs_mcp_server import config as cfg
         entries = find_vs_instances(cfg.VS_PROG_ID)
         if not entries:
             raise RuntimeError("STAThread 내부에서 VS ROT 항목 없음")
@@ -434,7 +434,7 @@ def test_debugger_mode_design(vs_ctx):
 
 def test_debug_stop_not_debugging(session_ctx):
     """Design 모드에서 vs_debug_stop() -> 'not_debugging'."""
-    from tools.debug import vs_debug_stop
+    from vs_mcp_server.tools.debug import vs_debug_stop
 
     result = asyncio.run(_acall(vs_debug_stop, session_id=session_ctx["session_id"]))
     assert result["status"] == "not_debugging", f"예상치 못한 결과: {result}"
@@ -447,7 +447,7 @@ def test_debug_stop_not_debugging(session_ctx):
 
 def test_file_goto_moves_cursor(session_ctx):
     """vs_file_goto가 지정한 라인으로 커서를 이동시킨다."""
-    from tools.editor import vs_file_goto, vs_file_active
+    from vs_mcp_server.tools.editor import vs_file_goto, vs_file_active
 
     target_line = 3
     result = asyncio.run(_acall(vs_file_goto,
@@ -470,7 +470,7 @@ def test_file_goto_moves_cursor(session_ctx):
 
 def test_file_highlight_selects_range(session_ctx):
     """vs_file_highlight가 지정 라인 범위를 선택 상태로 만든다."""
-    from tools.editor import vs_file_highlight
+    from vs_mcp_server.tools.editor import vs_file_highlight
 
     result = asyncio.run(_acall(vs_file_highlight,
                                 session_id=session_ctx["session_id"],
@@ -487,7 +487,7 @@ def test_file_highlight_selects_range(session_ctx):
 
 def test_file_selection_returns_position(session_ctx):
     """vs_file_selection이 현재 선택 위치와 텍스트를 반환한다."""
-    from tools.editor import vs_file_selection
+    from vs_mcp_server.tools.editor import vs_file_selection
 
     result = asyncio.run(_acall(vs_file_selection, session_id=session_ctx["session_id"]))
     assert result.get("path"), f"path 없음: {result}"
@@ -503,9 +503,24 @@ def test_file_selection_returns_position(session_ctx):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def debug_vs_ctx(com_sta):
-    """DebugTarget.sln으로 새 VS 인스턴스를 실행하고 Debug 빌드까지 완료한다."""
-    from utils.rot import find_vs_instances
+def debug_vs_ctx(com_sta, vs_ctx):
+    """DebugTarget.sln으로 새 VS 인스턴스를 실행하고 Debug 빌드까지 완료한다.
+
+    vs_ctx VS(비디버그 테스트용)를 먼저 종료하여 2개 동시 실행으로 인한
+    COM RPC_E_CALL_REJECTED(0x80010001) 를 방지한다.
+    """
+    from vs_mcp_server.utils.rot import find_vs_instances
+
+    # 비디버그 VS 종료 (이미 완료된 테스트이므로 안전하게 Quit)
+    try:
+        vs_ctx["dte"].Quit()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if not _is_process_alive(vs_ctx["pid"]):
+                break
+            time.sleep(0.5)
+    except Exception:
+        pass
 
     proc = subprocess.Popen([config.VS_DEVENV_PATH, DEBUG_SLN])
     print(f"\n[debug_vs_ctx] 새 VS 시작 proc.pid={proc.pid}")
@@ -565,8 +580,8 @@ def debug_vs_ctx(com_sta):
 @pytest.fixture(scope="module")
 def debug_session_ctx(debug_vs_ctx):
     """새 VS 인스턴스에 _SyncSTA 세션을 바인딩한다."""
-    import session_manager as sm
-    import com_bridge
+    from vs_mcp_server import session_manager as sm
+    from vs_mcp_server import com_bridge
 
     dte = debug_vs_ctx["dte"]
     pid = debug_vs_ctx["pid"]
@@ -589,7 +604,7 @@ def debug_session_ctx(debug_vs_ctx):
 
 def test_debug_breakpoint_hit(debug_session_ctx):
     """Program.cs:5에 BP 추가 후 디버거 시작, 실제로 Break 모드에 진입한다."""
-    from tools.debug import vs_debug_breakpoint, vs_debug_start
+    from vs_mcp_server.tools.debug import vs_debug_breakpoint, vs_debug_start
 
     sid = debug_session_ctx["session_id"]
     dte = debug_session_ctx["dte"]
@@ -633,7 +648,7 @@ def test_debug_breakpoint_hit(debug_session_ctx):
 
 def test_debug_locals_in_break(debug_session_ctx):
     """Break 모드에서 vs_debug_locals가 x=42, y=50, msg를 반환한다."""
-    from tools.debug import vs_debug_locals
+    from vs_mcp_server.tools.debug import vs_debug_locals
 
     result = asyncio.run(_acall(vs_debug_locals, session_id=debug_session_ctx["session_id"]))
     assert result["count"] > 0, f"로컬 변수가 없음: {result}"
@@ -656,7 +671,7 @@ def test_debug_locals_in_break(debug_session_ctx):
 
 def test_debug_evaluate_in_break(debug_session_ctx):
     """Break 모드에서 표현식 평가가 올바른 값을 반환한다."""
-    from tools.debug import vs_debug_evaluate
+    from vs_mcp_server.tools.debug import vs_debug_evaluate
 
     sid = debug_session_ctx["session_id"]
 
@@ -683,7 +698,7 @@ def test_debug_callstack_in_break(debug_session_ctx):
     .NET 8 관리 코드에서는 StackFrames 순회가 동작하지 않아 CurrentStackFrame
     폴백으로 1개 프레임을 반환한다. file/line은 PDB 정보 가용 여부에 따라 빈 값일 수 있다.
     """
-    from tools.debug import vs_debug_callstack
+    from vs_mcp_server.tools.debug import vs_debug_callstack
 
     result = asyncio.run(_acall(vs_debug_callstack, session_id=debug_session_ctx["session_id"]))
     assert result["depth"] >= 1, f"콜스택 프레임이 없음 (CurrentStackFrame 폴백도 실패): {result}"
@@ -700,7 +715,7 @@ def test_debug_callstack_in_break(debug_session_ctx):
 
 def test_debug_step_over_in_break(debug_session_ctx):
     """Break 모드에서 step over 후 다음 라인으로 이동한다."""
-    from tools.debug import vs_debug_step
+    from vs_mcp_server.tools.debug import vs_debug_step
 
     result = asyncio.run(_acall(vs_debug_step,
                                 session_id=debug_session_ctx["session_id"],
@@ -716,7 +731,7 @@ def test_debug_step_over_in_break(debug_session_ctx):
 
 def test_debug_stop_from_break(debug_session_ctx):
     """Break 모드에서 vs_debug_stop이 Design 모드로 복귀한다."""
-    from tools.debug import vs_debug_stop
+    from vs_mcp_server.tools.debug import vs_debug_stop
 
     result = asyncio.run(_acall(vs_debug_stop, session_id=debug_session_ctx["session_id"]))
     assert result["status"] == "stopped", f"stop 실패: {result}"
