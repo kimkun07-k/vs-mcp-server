@@ -32,6 +32,7 @@ from .tools import editor as editor_tools  # noqa: E402
 from .tools import build as build_tools  # noqa: E402
 from .tools import debug as debug_tools  # noqa: E402
 from .tools import queue as queue_tools  # noqa: E402
+from .tools import dte as dte_tools  # noqa: E402
 
 app = Server("vs-mcp-server")
 
@@ -356,6 +357,25 @@ async def list_tools() -> list[types.Tool]:
                 "required": [],
             },
         ),
+
+        # ── DTE 범용 래퍼 ───────────────────────────────────────────
+        types.Tool(
+            name="vs_command",
+            description=(
+                "dte.ExecuteCommand()로 VS 명령을 실행한다. "
+                "6000개 이상의 VS 명령(예: 'Edit.FormatDocument', 'File.SaveAll')에 접근 가능. "
+                "명령이 유효하지 않으면 예외 없이 무시될 수 있음."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string", "description": "세션 식별자"},
+                    "command": {"type": "string", "description": "VS 명령 이름 (예: 'Edit.FormatDocument')"},
+                    "args": {"type": "string", "description": "명령 인수 문자열 (선택)", "default": ""},
+                },
+                "required": ["session_id", "command"],
+            },
+        ),
     ]
 
 
@@ -499,6 +519,13 @@ async def _dispatch(name: str, args: dict):
             limit=args.get("limit", config.QUEUE_HISTORY_DEFAULT_LIMIT),
         )
 
+    # DTE 범용 래퍼
+    if name == "vs_command":
+        return await dte_tools.vs_command(
+            session_id=sid,
+            command=args["command"],
+            args=args.get("args", ""),
+        )
     raise ValueError(f"알 수 없는 도구: {name}")
 
 

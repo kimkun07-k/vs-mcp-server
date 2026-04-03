@@ -404,3 +404,49 @@ VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 - **STAThread cross-apartment**: `STAThread` 내에서 DTE를 사용할 때는 ROT에서 직접 DTE를 재획득해야 한다. 메인 스레드의 DTE 포인터를 STAThread에 전달하면 `RPC_E_WRONG_THREAD` 발생.
 - **Break 모드 전용 기능**: `vs_debug_step`, `vs_debug_locals`, `vs_debug_evaluate`, `vs_debug_callstack`은 디버거가 Break 모드일 때만 동작한다.
 - **.NET 8 관리 코드 제한**: `CurrentThread.StackFrames` COM 열거가 빈 컬렉션을 반환하는 경우가 있음. `vs_debug_callstack`은 `CurrentStackFrame` 폴백으로 처리하고, `vs_debug_step`은 `ActiveDocument.Selection` 폴백으로 처리한다.
+
+---
+
+## DTE 직접 접근 (Advanced)
+
+MCP 서버를 거치지 않고 외부 Python 스크립트에서 직접 DTE COM 객체에 접근할 수 있다. VS 인스턴스는 Windows ROT(Running Object Table)에 `VisualStudio.DTE.17.0` 모니커로 등록되어 있다.
+
+### 단일 VS 인스턴스
+
+```python
+import pythoncom
+import win32com.client
+
+pythoncom.CoInitialize()
+dte = win32com.client.GetActiveObject("VisualStudio.DTE.17.0")
+
+# 예시: 솔루션 경로 출력
+print(dte.Solution.FullName)
+```
+
+> **주의**: `GetActiveObject`는 VS 인스턴스가 여러 개 실행 중일 때 어느 인스턴스를 반환할지 보장하지 않는다. 단일 인스턴스 환경에서만 사용할 것.
+
+### 복수 VS 인스턴스 — PID로 특정 인스턴스 선택
+
+`vs_list_instances` 도구로 PID를 확인한 뒤, ROT에서 해당 PID의 인스턴스를 직접 획득한다.
+
+```python
+import pythoncom
+import win32com.client
+from vs_mcp_server.utils.rot import find_vs_instances, get_vs_pid
+
+pythoncom.CoInitialize()
+
+target_pid = 12345  # vs_list_instances 또는 vs_connect 응답의 instance_pid
+
+entries = find_vs_instances()
+dte = next(
+    e["dte"] for e in entries
+    if get_vs_pid(e["dte"]) == target_pid
+)
+
+# 이후 dte 객체를 자유롭게 사용
+print(dte.Solution.FullName)
+```
+
+> **참고**: `find_vs_instances()`는 ROT를 순회하여 모든 `VisualStudio.DTE.17.0` 항목을 반환한다. `get_vs_pid(dte)`는 DTE의 `MainWindow.HWnd`에서 PID를 추출한다.
