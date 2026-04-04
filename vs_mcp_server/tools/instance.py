@@ -56,7 +56,7 @@ def vs_connect(
             if dte is None:
                 raise RuntimeError(f"솔루션 '{solution_path}'을 연 VS 인스턴스를 ROT에서 찾을 수 없습니다.")
 
-        from utils.rot import get_vs_pid
+        from ..utils.rot import get_vs_pid
         actual_pid = get_vs_pid(dte) or pid or 0
         try:
             sol = dte.Solution.FullName or solution_path or ""
