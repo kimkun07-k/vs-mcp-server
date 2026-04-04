@@ -499,6 +499,46 @@ def test_file_selection_returns_position(session_ctx):
 
 
 # ---------------------------------------------------------------------------
+# IT-018: DTE 범용 명령 실행 (vs_command)
+# ---------------------------------------------------------------------------
+
+def test_vs_command_executes_successfully(session_ctx):
+    """vs_command가 유효한 VS 명령을 실행하고 status=executed를 반환한다."""
+    from vs_mcp_server.tools.dte import vs_command
+
+    result = asyncio.run(_acall(vs_command,
+                                session_id=session_ctx["session_id"],
+                                command="Edit.LineEnd"))
+    assert result["status"] == "executed", f"vs_command 실패: {result}"
+    assert result["command"] == "Edit.LineEnd"
+    print(f"\n  vs_command('Edit.LineEnd') -> status={result['status']} [OK]")
+
+
+def test_vs_command_with_args(session_ctx):
+    """vs_command에 args 인수가 정상적으로 전달된다."""
+    from vs_mcp_server.tools.dte import vs_command
+
+    result = asyncio.run(_acall(vs_command,
+                                session_id=session_ctx["session_id"],
+                                command="Edit.GoTo",
+                                args="1"))
+    assert result["status"] == "executed", f"vs_command with args 실패: {result}"
+    assert result["args"] == "1"
+    print(f"\n  vs_command('Edit.GoTo', '1') -> status={result['status']} [OK]")
+
+
+def test_vs_command_invalid_raises(session_ctx):
+    """존재하지 않는 명령을 실행하면 COM 예외가 전파된다."""
+    from vs_mcp_server.tools.dte import vs_command
+
+    with pytest.raises(Exception):
+        asyncio.run(_acall(vs_command,
+                            session_id=session_ctx["session_id"],
+                            command="Nonexistent.FakeCommand.12345"))
+    print(f"\n  vs_command('Nonexistent.FakeCommand.12345') -> 예외 전파 [OK]")
+
+
+# ---------------------------------------------------------------------------
 # 실제 디버깅 세션 픽스처 (IT-012~017)
 # ---------------------------------------------------------------------------
 

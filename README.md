@@ -298,6 +298,12 @@ C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe
 | `vs_queue_cancel` | 대기 큐의 명령을 `command_id`로 취소 |
 | `vs_queue_history` | 최근 N건의 명령 이력(완료/실패/취소) 반환 |
 
+### DTE 범용
+
+| 도구 | 설명 |
+|------|------|
+| `vs_command` | `dte.ExecuteCommand()`로 VS 명령 실행. 6000+ 명령에 접근 가능 (`Edit.FormatDocument`, `File.SaveAll` 등) |
+
 ---
 
 ## 사용 예시
@@ -336,6 +342,10 @@ vs_debug_step(session_id="s1", step_type="over")
 
 # 9. 디버깅 종료
 vs_debug_stop(session_id="s1")
+
+# 10. DTE 명령 직접 실행
+vs_command(session_id="s1", command="Edit.FormatDocument")
+vs_command(session_id="s1", command="File.SaveAll")
 ```
 
 ---
@@ -379,6 +389,7 @@ VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 | **디버깅 세션** | IT-015 | `vs_debug_callstack` → `depth >= 1`, .NET 8 `CurrentStackFrame` 폴백 동작 |
 | **디버깅 세션** | IT-016 | `vs_debug_step("over")` 후 `mode == "break"`, `line > BP_LINE`, `ActiveDocument` 폴백 동작 |
 | **디버깅 세션** | IT-017 | `vs_debug_stop()` → `status == "stopped"`, `mode == "design"` |
+| DTE 범용 | IT-018 | `vs_command("Edit.LineEnd")` 실행 후 `status == "executed"`, 잘못된 명령 시 COM 예외 전파 |
 
 ---
 
