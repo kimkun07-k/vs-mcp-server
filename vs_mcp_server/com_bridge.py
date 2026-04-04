@@ -19,6 +19,7 @@ from typing import Any, Callable, Optional
 
 from . import config
 from . import crash_logger
+from .utils.rot import find_vs_instances, get_vs_pid
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,10 @@ class STAThread:
     asyncio Future를 통해 결과를 반환하므로, MCP 핸들러에서 await 가능하다.
     """
 
-    def __init__(self, instance_pid: int, dte) -> None:
+    def __init__(self, instance_pid: int) -> None:
         self.instance_pid = instance_pid
-        self.dte = dte
+        self.dte = None  # STA 스레드 내부에서 ROT 조회로 설정됨
+        self._dte_ready = threading.Event()
         self._immediate_q: queue.Queue[Command | None] = queue.Queue()
         self._long_q: queue.Queue[Command | None] = queue.Queue()
         self._history: list[Command] = []
@@ -166,10 +168,16 @@ class STAThread:
     # ------------------------------------------------------------------ #
 
     def _run(self) -> None:
-        """STA 스레드 메인 루프."""
+        """STA 스레드 메인 루프.
+
+        이 스레드의 COM apartment에서 직접 ROT 조회하여 DTE를 획득한다.
+        caller 스레드에서 넘겨받은 DTE는 apartment 경계를 넘으면 <unknown> 에러가 발생하므로,
+        반드시 이 STA 스레드 내부에서 재획득해야 한다.
+        """
         import pythoncom
         pythoncom.CoInitialize()
         try:
+            self._acquire_dte_from_rot()
             while True:
                 # 즉시 채널 우선 처리
                 cmd = self._try_get(self._immediate_q)
@@ -183,6 +191,26 @@ class STAThread:
         finally:
             pythoncom.CoUninitialize()
 
+    def _acquire_dte_from_rot(self) -> None:
+        """STA apartment 내에서 ROT를 조회하여 self.dte를 설정한다.
+
+        VS가 ROT에 등록되기까지 시간이 걸릴 수 있으므로 폴링한다.
+        """
+        deadline = time.monotonic() + config.timeouts.get("launch", 60)
+        while time.monotonic() < deadline:
+            entries = find_vs_instances(config.VS_PROG_ID)
+            for entry in entries:
+                dte = entry["dte"]
+                pid = get_vs_pid(dte)
+                if pid == self.instance_pid:
+                    self.dte = dte
+                    self._dte_ready.set()
+                    logger.info("STA-%d: DTE 획득 완료 (ROT)", self.instance_pid)
+                    return
+            time.sleep(config.ROT_POLL_INTERVAL)
+        self._dte_ready.set()  # 타임아웃이어도 이벤트는 풀어줌
+        logger.error("STA-%d: ROT에서 DTE 획득 실패 (타임아웃)", self.instance_pid)
+
     def _try_get(self, q: queue.Queue, timeout: float = 0.0) -> Optional[Command]:
         try:
             cmd = q.get(timeout=timeout)
@@ -193,6 +221,14 @@ class STAThread:
             return None
 
     def _execute(self, cmd: Command) -> None:
+        self._dte_ready.wait()
+        if self.dte is None:
+            exc = RuntimeError(
+                f"STA-{self.instance_pid}: ROT에서 DTE를 획득하지 못했습니다. "
+                "VS 인스턴스가 실행 중인지 확인하세요."
+            )
+            self._reject_future(cmd, exc)
+            return
         cmd.started_at = time.monotonic()
         cmd.status = "running"
         with self._lock:
@@ -253,11 +289,16 @@ _sta_registry: dict[int, STAThread] = {}   # pid → STAThread
 _registry_lock = threading.Lock()
 
 
-def get_or_create_sta(instance_pid: int, dte) -> STAThread:
-    """pid에 해당하는 STAThread를 반환하거나, 없으면 새로 생성한다."""
+def get_or_create_sta(instance_pid: int, dte=None) -> STAThread:
+    """pid에 해당하는 STAThread를 반환하거나, 없으면 새로 생성한다.
+
+    Args:
+        instance_pid: VS 프로세스 PID
+        dte: (deprecated, 무시됨) 하위 호환용. STA 스레드가 ROT에서 직접 획득한다.
+    """
     with _registry_lock:
         if instance_pid not in _sta_registry:
-            _sta_registry[instance_pid] = STAThread(instance_pid, dte)
+            _sta_registry[instance_pid] = STAThread(instance_pid)
         return _sta_registry[instance_pid]
 
 
