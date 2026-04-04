@@ -26,7 +26,7 @@ dependencies = [
 vs-mcp-server = "vs_mcp_server.__main__:_entry"
 
 [project.urls]
-Repository = "https://github.com/panninghour/vs-mcp-server"
+Repository = "https://github.com/kimkun07-k/vs-mcp-server"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vs_mcp_server"]
