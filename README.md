@@ -415,6 +415,44 @@ VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 - **STAThread cross-apartment**: `STAThread` 내에서 DTE를 사용할 때는 ROT에서 직접 DTE를 재획득해야 한다. 메인 스레드의 DTE 포인터를 STAThread에 전달하면 `RPC_E_WRONG_THREAD` 발생.
 - **Break 모드 전용 기능**: `vs_debug_step`, `vs_debug_locals`, `vs_debug_evaluate`, `vs_debug_callstack`은 디버거가 Break 모드일 때만 동작한다.
 - **.NET 8 관리 코드 제한**: `CurrentThread.StackFrames` COM 열거가 빈 컬렉션을 반환하는 경우가 있음. `vs_debug_callstack`은 `CurrentStackFrame` 폴백으로 처리하고, `vs_debug_step`은 `ActiveDocument.Selection` 폴백으로 처리한다.
+- **DTE2 접근 불가 (Python)**: 아래 [DTE2 제약사항](#dte2-제약사항-python) 참고.
+
+---
+
+## DTE2 제약사항 (Python)
+
+### 문제
+
+Python pywin32는 EnvDTE80.DTE2 전용 속성(`ToolWindows` 등)에 접근할 수 없다. `VisualStudio.DTE.17.0` ProgID로 ROT에서 획득한 COM 객체의 기본 IDispatch는 EnvDTE._DTE(v7.0)이며, `ToolWindows`는 DTE2 IDispatch vtable의 DispId 300에만 존재한다.
+
+| 접근 방식 | DTE2 캐스트 | ToolWindows | ErrorList |
+|-----------|------------|-------------|-----------|
+| Python pywin32 | 부분적(래핑) | **FAIL** | - |
+| PowerShell 5.1/7 | FAIL | **FAIL** | - |
+| C# .NET 콘솔앱 | SUCCESS | SUCCESS | SUCCESS |
+
+Late-binding 검증에서도 `InvokeMember("ToolWindows")`가 `DISP_E_UNKNOWNNAME (0x80020006)`을 반환하여, IDispatch 자체에 `ToolWindows`가 없음이 확인되었다. C#만이 `(DTE2)dte` 캐스트 시 COM QueryInterface를 통해 DTE2 vtable을 직접 획득한다.
+
+### 시도한 접근법
+
+1. **Python `win32com.client.Dispatch`**: gen_py 캐시 유무에 관계없이 DTE2 속성 접근 불가
+2. **Python `win32com.client.dynamic.Dispatch`**: late-bound 강제 → `DISP_E_UNKNOWNNAME` (IDispatch에 없음)
+3. **Python `_oleobj_.GetIDsOfNames("ToolWindows")`**: 동일하게 `DISP_E_UNKNOWNNAME`
+4. **C# 브릿지 (subprocess)**: DTE2 캐스트 성공, `ToolWindows.ErrorList` 접근 가능. 그러나 `ErrorList.ErrorItems`가 외부 COM 프로세스에서 항상 빈 컬렉션 반환 — Build Output 파싱으로 우회 필요
+
+### 현재 해결 방법
+
+`vs_error_list`는 DTE1에서 접근 가능한 **OutputWindow**의 Build pane 텍스트를 파싱하여 에러/경고를 반환한다:
+
+```python
+# DTE1으로 접근 가능 (ToolWindows 불필요)
+ow = dte.Windows.Item("{34E76E81-EE4A-11D0-AE2E-00A0C90FFFC3}").Object
+pane = ow.OutputWindowPanes.Item("Build")
+text = pane.TextDocument.StartPoint.CreateEditPoint().GetText(pane.TextDocument.EndPoint)
+# → MSBuild 출력 형식 정규식 파싱
+```
+
+이 방식은 C# 브릿지나 추가 런타임 없이 순수 Python으로 동작한다.
 
 ---
 

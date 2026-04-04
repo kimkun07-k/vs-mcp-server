@@ -230,13 +230,24 @@ async def vs_build_status(*, session_id: str) -> dict:
     )
 
 
+_OUTPUT_WINDOW_GUID = "{34E76E81-EE4A-11D0-AE2E-00A0C90FFFC3}"
+
+
 async def vs_error_list(
     *,
     session_id: str,
     include_warnings: bool = True,
     include_messages: bool = False,
 ) -> dict:
-    """Error List 창에서 에러/경고/메시지를 가져온다.
+    """빌드 에러/경고를 Build Output Window에서 파싱하여 반환한다.
+
+    DTE1의 Windows.Item(GUID)으로 OutputWindow에 접근하고,
+    Build pane의 텍스트를 MSBuild 출력 형식으로 파싱한다.
+
+    Note:
+        ToolWindows.ErrorList는 DTE2 전용 속성이므로 Python pywin32에서
+        접근 불가 (IDispatch vtable에 ToolWindows DispId가 없음).
+        대신 DTE1에서 접근 가능한 OutputWindow의 Build pane을 사용한다.
 
     Args:
         session_id: 세션 ID
@@ -246,44 +257,59 @@ async def vs_error_list(
     Returns:
         {"errors": [...], "warnings": [...], "messages": [...], "error_count": int}
     """
+    import re
+
     sta = _get_sta(session_id)
 
     def _error_list():
+        import time as _time
+
         dte = sta.dte
-        try:
-            error_list = dte.ToolWindows.ErrorList
-        except Exception as e:
-            logger.warning("ErrorList 접근 실패: %s", e)
-            return {"errors": [], "warnings": [], "messages": [], "error_count": 0}
+        build_text = ""
+
+        # VS가 빌드 직후 바쁜 상태일 수 있으므로 RPC_E_CALL_REJECTED 시 재시도
+        for attempt in range(5):
+            try:
+                ow = dte.Windows.Item(_OUTPUT_WINDOW_GUID).Object
+                for i in range(1, ow.OutputWindowPanes.Count + 1):
+                    pane = ow.OutputWindowPanes.Item(i)
+                    if "Build" in pane.Name or "빌드" in pane.Name:
+                        doc = pane.TextDocument
+                        build_text = doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint)
+                        break
+                break  # 성공 시 루프 탈출
+            except Exception as e:
+                if attempt < 4 and "거부" in str(e) or "0x80010001" in str(e):
+                    _time.sleep(0.5)
+                    continue
+                logger.warning("Build Output 접근 실패: %s", e)
+                break
 
         errors, warnings, messages = [], [], []
 
-        # vsBuildErrorLevel: 1=error, 2=warning, 3=message
-        try:
-            for i in range(1, error_list.ErrorItems.Count + 1):
-                try:
-                    item = error_list.ErrorItems.Item(i)
-                    entry = {
-                        "description": item.Description or "",
-                        "file": item.FileName or "",
-                        "line": item.Line,
-                        "column": item.Column,
-                        "project": item.Project or "",
-                        "error_code": item.ErrorNumber or "",
-                    }
-                    level = item.ErrorLevel
-                    if level == 1:
-                        errors.append(entry)
-                    elif level == 2:
-                        warnings.append(entry)
-                    else:
-                        messages.append(entry)
-                except Exception:
-                    continue
-        except Exception as e:
-            logger.warning("ErrorItems 순회 실패: %s", e)
+        if build_text:
+            # VS Build Output 형식:
+            # [timestamp\t][1>]path(line,col[,endline,endcol]): error|warning CODE: message
+            pattern = re.compile(
+                r"([A-Za-z]:\\[^\(]+)\((\d+),(\d+)(?:,\d+,\d+)?\):\s+(error|warning)\s+(\w+):\s+(.+?)(?:\s+\[(.+?)\])?$",
+                re.MULTILINE,
+            )
+            for m in pattern.finditer(build_text):
+                file, line, col, level, code, desc, proj = m.groups()
+                entry = {
+                    "description": f"{code}: {desc.strip()}",
+                    "file": file,
+                    "line": int(line),
+                    "column": int(col),
+                    "project": proj.rsplit("\\", 1)[-1].rsplit(".", 1)[0] if proj else "",
+                    "error_code": code,
+                }
+                if level == "error":
+                    errors.append(entry)
+                else:
+                    warnings.append(entry)
 
-        result = {
+        result: dict = {
             "errors": errors,
             "error_count": len(errors),
         }
@@ -293,7 +319,6 @@ async def vs_error_list(
         if include_messages:
             result["messages"] = messages
             result["message_count"] = len(messages)
-
         return result
 
     return await sta.submit(

@@ -26,6 +26,7 @@ from vs_mcp_server import vs_instance_manager as vim
 TEST_FILE = str(Path(__file__).parent.parent / "vs_mcp_server" / "config.py")
 DEBUG_PROGRAM_CS = str(Path(__file__).parent / "debug_target" / "Program.cs")
 DEBUG_SLN = str(Path(__file__).parent / "debug_target" / "DebugTarget.sln")
+ERROR_SLN = str(Path(__file__).parent / "error_target" / "ErrorTarget.sln")
 BP_LINE = 5  # Console.WriteLine in Program.cs
 
 
@@ -777,6 +778,152 @@ def test_debug_stop_from_break(debug_session_ctx):
     assert result["status"] == "stopped", f"stop 실패: {result}"
     assert result["mode"] == "design"
     print(f"\n  vs_debug_stop -> status={result['status']}, mode={result['mode']} [OK]")
+
+
+# ---------------------------------------------------------------------------
+# IT-019: vs_error_list — 실제 에러/경고 반환 검증
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def error_vs_ctx(com_sta):
+    """ErrorTarget.sln으로 VS를 실행하고 빌드한다 (에러/경고 발생 확인용).
+
+    독립적 픽스처 — debug_vs_ctx와 무관하게 자체 VS 인스턴스를 사용한다.
+    ErrorTarget은 의도적으로 CS0103 에러와 CS1030 경고를 포함한다.
+    """
+    from vs_mcp_server.utils.rot import find_vs_instances
+
+    proc = subprocess.Popen([config.VS_DEVENV_PATH, ERROR_SLN])
+    print(f"\n[error_vs_ctx] VS 시작 proc.pid={proc.pid} (ErrorTarget.sln)")
+
+    # ROT 등록 대기
+    deadline = time.monotonic() + config.timeouts["launch"]
+    new_dte = None
+    new_pid = None
+    while time.monotonic() < deadline:
+        vim._try_lose_focus(proc.pid)
+        for entry in find_vs_instances(config.VS_PROG_ID):
+            m_pid = _pid_from_moniker(entry["moniker_name"])
+            if m_pid == proc.pid and _is_process_alive(m_pid):
+                new_dte = entry["dte"]
+                new_pid = m_pid
+                break
+        if new_dte:
+            break
+        time.sleep(config.ROT_POLL_INTERVAL)
+
+    assert new_dte is not None, f"VS ROT 등록 타임아웃 (proc.pid={proc.pid})"
+    print(f"[error_vs_ctx] ROT 등록 확인 pid={new_pid}")
+
+    # 솔루션 로드 + MainWindow 준비 대기
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        try:
+            _ = new_dte.MainWindow.Caption
+            if new_dte.Solution.IsOpen:
+                break
+        except Exception:
+            pass
+        time.sleep(1)
+    print(f"[error_vs_ctx] 솔루션 로드: {new_dte.Solution.FullName}")
+
+    # 빌드 (실패 예상)
+    print("[error_vs_ctx] 빌드 시작 (에러 예상)...")
+    sb = new_dte.Solution.SolutionBuild
+    sb.Build(WaitForBuildToFinish=True)
+    failed = int(sb.LastBuildInfo)
+    print(f"[error_vs_ctx] 빌드 완료: LastBuildInfo={failed} (1=프로젝트 실패)")
+    assert failed > 0, "ErrorTarget 빌드가 성공함 — 의도적 에러가 없음"
+
+    yield {"dte": new_dte, "pid": new_pid}
+
+    # 정리: VS 종료
+    try:
+        new_dte.Quit()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="module")
+def error_session_ctx(error_vs_ctx):
+    """에러 VS에 _SyncSTA 세션을 바인딩한다.
+
+    bind_instance()를 호출하면 real STAThread가 생성되어
+    background에서 ROT 폴링 → COM 충돌(RPC_E_CALL_REJECTED) 발생.
+    _SyncSTA만 직접 등록하여 이를 방지한다.
+    """
+    from vs_mcp_server import session_manager as sm
+    from vs_mcp_server import com_bridge
+
+    dte = error_vs_ctx["dte"]
+    pid = error_vs_ctx["pid"]
+    session_id = "it-error-01"
+
+    sta = _SyncSTA(pid, dte)
+    manager = sm.get_manager()
+    session = manager.get_or_create_session(session_id)
+    session.instance_pid = pid
+    com_bridge._sta_registry[pid] = sta
+
+    yield {"session_id": session_id, "dte": dte, "pid": pid}
+
+    manager.unbind_instance(session_id)
+    com_bridge._sta_registry.pop(pid, None)
+
+
+def test_error_list_returns_actual_errors(error_session_ctx):
+    """빌드 실패 후 vs_error_list가 Build Output에서 실제 에러를 파싱한다.
+
+    ErrorTarget의 Program.cs에는 CS0103 에러가 있으므로,
+    errors 배열에 1개 이상의 항목이 있어야 한다.
+    DTE1 OutputWindow의 Build pane 텍스트를 정규식으로 파싱한다.
+    """
+    from vs_mcp_server.tools.build import vs_error_list
+
+    result = asyncio.run(_acall(vs_error_list,
+                                session_id=error_session_ctx["session_id"],
+                                include_warnings=True,
+                                include_messages=True))
+
+    assert len(result["errors"]) > 0, (
+        f"vs_error_list가 빈 errors를 반환함. result={result}"
+    )
+    assert result["error_count"] > 0
+
+    error_descriptions = " ".join(e["description"] for e in result["errors"])
+    assert "CS0103" in error_descriptions or "undefinedVar" in error_descriptions, (
+        f"예상된 CS0103 에러가 없음: {result['errors']}"
+    )
+    print(f"\n  errors: {result['error_count']}개")
+    for e in result["errors"]:
+        print(f"    [{e.get('error_code', '')}] {e['file']}:{e['line']} {e['description'][:80]}")
+
+
+def test_error_list_returns_actual_warnings(error_session_ctx):
+    """빌드 실패 후 vs_error_list가 Build Output에서 실제 경고를 파싱한다.
+
+    ErrorTarget의 Program.cs에는 #warning CS1030 경고가 있으므로,
+    warnings 배열에 1개 이상의 항목이 있어야 한다.
+    """
+    from vs_mcp_server.tools.build import vs_error_list
+
+    result = asyncio.run(_acall(vs_error_list,
+                                session_id=error_session_ctx["session_id"],
+                                include_warnings=True))
+
+    assert "warnings" in result, f"warnings 키 없음: {result.keys()}"
+    assert len(result["warnings"]) > 0, (
+        f"vs_error_list가 빈 warnings를 반환함. result={result}"
+    )
+    assert result["warning_count"] > 0
+
+    warn_descriptions = " ".join(w["description"] for w in result["warnings"])
+    assert "CS1030" in warn_descriptions or "TEST_WARNING" in warn_descriptions, (
+        f"예상된 CS1030 경고가 없음: {result['warnings']}"
+    )
+    print(f"\n  warnings: {result['warning_count']}개")
+    for w in result["warnings"]:
+        print(f"    [{w.get('error_code', '')}] {w['file']}:{w['line']} {w['description'][:80]}")
 
 
 # ---------------------------------------------------------------------------
