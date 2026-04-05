@@ -7,4 +7,12 @@ logs/
 *.jsonl
 .env
 dist/
-.omc/state/
+.omc/
+
+# VS / .NET 빌드 아티팩트
+.vs/
+bin/
+obj/
+
+# 기타
+vs_stderr.log

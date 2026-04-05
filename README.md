@@ -276,7 +276,7 @@ C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe
 | `vs_build_solution` | 솔루션 전체 비동기 빌드, 결과 반환 |
 | `vs_build_project` | 특정 프로젝트만 빌드 |
 | `vs_build_status` | 마지막 빌드 결과 및 현재 빌드 상태 조회 |
-| `vs_error_list` | Error List 창의 에러/경고를 파일 경로·라인 번호와 함께 반환 |
+| `vs_error_list` | Build Output에서 에러/경고를 파싱하여 파일 경로·라인 번호와 함께 반환 |
 
 ### 디버깅
 
@@ -368,7 +368,7 @@ python -m pytest tests/test_integration_vs.py -v -s
 
 VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 
-**통합 테스트 항목 (IT 그룹 17개, pytest 함수 26개):**
+**통합 테스트 항목 (IT 그룹 18개, pytest 함수 28개):**
 
 | 그룹 | ID | 검증 내용 |
 |------|----|----------|
@@ -390,6 +390,7 @@ VS가 미실행이면 자동으로 실행 후 ROT 등록을 대기한다.
 | **디버깅 세션** | IT-016 | `vs_debug_step("over")` 후 `mode == "break"`, `line > BP_LINE`, `ActiveDocument` 폴백 동작 |
 | **디버깅 세션** | IT-017 | `vs_debug_stop()` → `status == "stopped"`, `mode == "design"` |
 | DTE 범용 | IT-018 | `vs_command("Edit.LineEnd")` 실행 후 `status == "executed"`, 잘못된 명령 시 COM 예외 전파 |
+| **Error List** | IT-019 | `ErrorTarget.sln` 빌드 후 `vs_error_list` → CS0103 에러, CS1030 경고 파싱 확인 |
 
 ---
 

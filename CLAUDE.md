@@ -67,4 +67,6 @@ Claude Code (stdio) → server.py (22 MCP tools)
 ## Known Constraints
 
 - .NET 8 관리 코드에서 `StackFrames` 열거가 빈 결과를 반환할 수 있음 → `CurrentStackFrame` 폴백 사용.
-- 통합 테스트는 실제 VS 2022 인스턴스가 실행 중이어야 하며, `tests/debug_target/DebugTarget.sln` 프로젝트를 사용.
+- 통합 테스트는 실제 VS 2022 인스턴스가 실행 중이어야 하며, `tests/debug_target/DebugTarget.sln`과 `tests/error_target/ErrorTarget.sln` 프로젝트를 사용.
+- **DTE2 접근 불가**: Python pywin32는 DTE2 전용 속성(`ToolWindows` 등)에 접근 불가. `vs_error_list`는 DTE1 `Windows.Item(GUID)`로 OutputWindow Build pane을 읽어 정규식 파싱으로 해결.
+- **RPC_E_CALL_REJECTED**: VS가 바쁠 때(빌드 직후 등) COM 호출 거부. `vs_error_list`에 재시도 로직 포함.
