@@ -72,6 +72,8 @@ async def vs_file_goto(
         if doc is None:
             dte.ItemOperations.OpenFile(path)
             doc = dte.ActiveDocument
+        else:
+            doc.Activate()
 
         sel = doc.Selection
         sel.GotoLine(line, Select=False)
